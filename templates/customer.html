@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Support Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .chat-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            padding: 20px;
+            background-color: #2196f3;
+            color: white;
+            border-radius: 8px 8px 0 0;
+        }
+        .chat-status {
+            padding: 10px 20px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+            color: #666;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+        .message.customer {
+            background-color: #2196f3;
+            color: white;
+            margin-left: auto;
+            margin-right: 0;
+            border-bottom-right-radius: 4px;
+        }
+        .message.support {
+            background-color: #e0e0e0;
+            color: #333;
+            margin-left: 0;
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        .message-timestamp {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+        .message-input-container {
+            padding: 20px;
+            border-top: 1px solid #ddd;
+            background-color: #f8f9fa;
+        }
+        .customer-info {
+            margin-bottom: 15px;
+        }
+        .customer-info input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+        .message-input {
+            display: flex;
+            gap: 10px;
+        }
+        .message-input input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+        }
+        .message-input button {
+            padding: 12px 20px;
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .message-input button:hover {
+            background-color: #1976d2;
+        }
+        .message-input button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .start-chat-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .start-chat-btn:hover {
+            background-color: #45a049;
+        }
+        .typing-indicator {
+            padding: 10px 20px;
+            font-style: italic;
+            color: #666;
+            font-size: 14px;
+        }
+        .connection-status {
+            padding: 5px 20px;
+            font-size: 12px;
+            text-align: center;
+        }
+        .connection-status.connected {
+            background-color: #c8e6c9;
+            color: #2e7d32;
+        }
+        .connection-status.disconnected {
+            background-color: #ffcdd2;
+            color: #c62828;
+        }
+        .connection-status.waiting {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>Customer Support</h2>
+            <p>We're here to help! Start a conversation with our support team.</p>
+        </div>
+        
+        <div id="connectionStatus" class="connection-status disconnected">
+            Not connected
+        </div>
+        
+        <div id="chatStatus" class="chat-status">
+            Please enter your information to start chatting
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message support">
+                <div>Hello! Welcome to our customer support. Please enter your name and email to get started.</div>
+            </div>
+        </div>
+        
+        <div class="message-input-container">
+            <div id="customerInfo" class="customer-info">
+                <input type="text" id="customerName" placeholder="Your name" required>
+                <input type="email" id="customerEmail" placeholder="Your email address" required>
+                <button id="startChat" class="start-chat-btn">Start Chat</button>
+            </div>
+            
+            <div id="messageInput" class="message-input" style="display: none;">
+                <input type="text" id="messageText" placeholder="Type your message..." disabled>
+                <button id="sendMessage" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let websocket = null;
+        let customerEmail = '';
+        let customerName = '';
+        let isConnected = false;
+
+        // DOM elements
+        const connectionStatus = document.getElementById('connectionStatus');
+        const chatStatus = document.getElementById('chatStatus');
+        const chatMessages = document.getElementById('chatMessages');
+        const customerInfo = document.getElementById('customerInfo');
+        const messageInput = document.getElementById('messageInput');
+        const messageText = document.getElementById('messageText');
+        const sendButton = document.getElementById('sendMessage');
+
+        // Start chat
+        document.getElementById('startChat').addEventListener('click', () => {
+            const name = document.getElementById('customerName').value.trim();
+            const email = document.getElementById('customerEmail').value.trim();
+            
+            if (!name || !email) {
+                alert('Please enter both name and email');
+                return;
+            }
+            
+            if (!isValidEmail(email)) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            customerName = name;
+            customerEmail = email;
+            
+            // Hide customer info form and show message input
+            customerInfo.style.display = 'none';
+            messageInput.style.display = 'flex';
+            
+            // Connect to WebSocket
+            connectWebSocket();
+            
+            // Create chat session
+            createChatSession();
+        });
+
+        // Email validation
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        // WebSocket connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            websocket = new WebSocket(`${protocol}//${window.location.host}/chat/ws/customer/${customerEmail}`);
+            
+            websocket.onopen = () => {
+                isConnected = true;
+                updateConnectionStatus('connected');
+                updateChatStatus('Connected! Waiting for a support agent...');
+                messageText.disabled = false;
+                sendButton.disabled = false;
+            };
+            
+            websocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'message') {
+                    addMessageToChat(data.message, 'support', data.timestamp);
+                    if (data.from === 'support') {
+                        updateChatStatus('Connected with support agent');
+                    }
+                }
+            };
+            
+            websocket.onclose = () => {
+                isConnected = false;
+                updateConnectionStatus('disconnected');
+                updateChatStatus('Connection lost. Trying to reconnect...');
+                messageText.disabled = true;
+                sendButton.disabled = true;
+                
+                // Attempt to reconnect after 3 seconds
+                setTimeout(() => {
+                    if (!isConnected) {
+                        connectWebSocket();
+                    }
+                }, 3000);
+            };
+            
+            websocket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateConnectionStatus('disconnected');
+                updateChatStatus('Connection error. Please try again.');
+            };
+        }
+
+        // Create chat session
+        async function createChatSession() {
+            try {
+                const response = await fetch(`/chat/sessions/?customer_email=${encodeURIComponent(customerEmail)}`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const session = await response.json();
+                    console.log('Chat session created:', session);
+                    updateChatStatus('Chat session created. Waiting for support agent...');
+                } else {
+                    console.error('Failed to create chat session');
+                    updateChatStatus('Failed to create chat session. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error creating chat session:', error);
+                updateChatStatus('Error creating chat session. Please try again.');
+            }
+        }
+
+        // Update connection status
+        function updateConnectionStatus(status) {
+            connectionStatus.className = `connection-status ${status}`;
+            switch (status) {
+                case 'connected':
+                    connectionStatus.textContent = 'Connected';
+                    break;
+                case 'disconnected':
+                    connectionStatus.textContent = 'Disconnected';
+                    break;
+                case 'waiting':
+                    connectionStatus.textContent = 'Connecting...';
+                    break;
+            }
+        }
+
+        // Update chat status
+        function updateChatStatus(status) {
+            chatStatus.textContent = status;
+        }
+
+        // Add message to chat
+        function addMessageToChat(message, sender, timestamp) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.textContent = message;
+            messageDiv.appendChild(messageContent);
+            
+            if (timestamp) {
+                const timestampDiv = document.createElement('div');
+                timestampDiv.className = 'message-timestamp';
+                timestampDiv.textContent = new Date(timestamp).toLocaleTimeString();
+                messageDiv.appendChild(timestampDiv);
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Send message
+        function sendMessage() {
+            const message = messageText.value.trim();
+            
+            if (message && websocket && isConnected) {
+                websocket.send(JSON.stringify({
+                    type: 'chat_message',
+                    message: message,
+                    timestamp: new Date().toISOString()
+                }));
+                
+                addMessageToChat(message, 'customer', new Date().toISOString());
+                messageText.value = '';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('sendMessage').addEventListener('click', sendMessage);
+        document.getElementById('messageText').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Show typing indicator (optional enhancement)
+        let typingTimeout;
+        document.getElementById('messageText').addEventListener('input', () => {
+            if (websocket && isConnected) {
+                clearTimeout(typingTimeout);
+                
+                // Send typing indicator (you can implement this on the backend)
+                // websocket.send(JSON.stringify({ type: 'typing', isTyping: true }));
+                
+                typingTimeout = setTimeout(() => {
+                    // websocket.send(JSON.stringify({ type: 'typing', isTyping: false }));
+                }, 1000);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Support - Employee Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            height: 80vh;
+        }
+        .sidebar {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chat-area {
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .waiting-sessions {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .session-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .session-item:hover {
+            background-color: #f8f9fa;
+        }
+        .session-item.active {
+            background-color: #e3f2fd;
+        }
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            background-color: #f8f9fa;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 70%;
+        }
+        .message.customer {
+            background-color: #e1f5fe;
+            margin-left: 0;
+            margin-right: auto;
+        }
+        .message.employee {
+            background-color: #f3e5f5;
+            margin-left: auto;
+            margin-right: 0;
+        }
+        .message-input {
+            padding: 20px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+        .message-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .message-input button {
+            padding: 10px 20px;
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .message-input button:hover {
+            background-color: #1976d2;
+        }
+        .login-form {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #1976d2;
+        }
+        .error {
+            color: #f44336;
+            margin-top: 10px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.waiting {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status.active {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Form -->
+    <div id="loginForm" class="login-form">
+        <h2>Employee Login</h2>
+        <form id="login">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn">Login</button>
+            <div id="loginError" class="error hidden"></div>
+        </form>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="container hidden">
+        <div class="sidebar">
+            <h3>Employee Dashboard</h3>
+            <p id="employeeInfo"></p>
+            
+            <h4>Waiting Sessions</h4>
+            <div id="waitingSessions" class="waiting-sessions">
+                <!-- Waiting sessions will be populated here -->
+            </div>
+            
+            <h4>My Active Sessions</h4>
+            <div id="activeSessions" class="waiting-sessions">
+                <!-- Active sessions will be populated here -->
+            </div>
+            
+            <button id="refreshSessions" class="btn" style="margin-top: 10px;">Refresh Sessions</button>
+        </div>
+        
+        <div class="chat-area">
+            <div id="chatHeader" class="chat-header">
+                <h3>Select a chat session</h3>
+            </div>
+            <div id="chatMessages" class="chat-messages">
+                <!-- Chat messages will appear here -->
+            </div>
+            <div id="messageInput" class="message-input hidden">
+                <input type="text" id="messageText" placeholder="Type your message...">
+                <button id="sendMessage">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let token = null;
+        let employeeId = null;
+        let websocket = null;
+        let currentSession = null;
+
+        // Login functionality
+        document.getElementById('login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+
+                const response = await fetch('/auth/token', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    token = data.access_token;
+                    
+                    // Get employee info
+                    const employeeResponse = await fetch('/employees/me', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    if (employeeResponse.ok) {
+                        const employee = await employeeResponse.json();
+                        employeeId = employee.id;
+                        document.getElementById('employeeInfo').textContent = 
+                            `${employee.first_name} ${employee.last_name} (${employee.role.name})`;
+                        
+                        // Hide login form and show dashboard
+                        document.getElementById('loginForm').classList.add('hidden');
+                        document.getElementById('dashboard').classList.remove('hidden');
+                        
+                        // Connect to WebSocket
+                        connectWebSocket();
+                        
+                        // Load initial data
+                        loadWaitingSessions();
+                    }
+                } else {
+                    document.getElementById('loginError').textContent = 'Invalid credentials';
+                    document.getElementById('loginError').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                document.getElementById('loginError').textContent = 'Login failed';
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        });
+
+        // WebSocket connection
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            websocket = new WebSocket(`${protocol}//${window.location.host}/chat/ws/employee/${employeeId}`);
+            
+            websocket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'new_session') {
+                    loadWaitingSessions();
+                } else if (data.type === 'message') {
+                    if (currentSession && data.session_id === currentSession.id) {
+                        addMessageToChat(data.message, 'customer');
+                    }
+                } else if (data.type === 'unassigned_message') {
+                    loadWaitingSessions();
+                }
+            };
+            
+            websocket.onclose = () => {
+                console.log('WebSocket connection closed');
+                setTimeout(connectWebSocket, 3000); // Reconnect after 3 seconds
+            };
+        }
+
+        // Load waiting sessions
+        async function loadWaitingSessions() {
+            try {
+                const response = await fetch('/chat/sessions/waiting', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const sessions = await response.json();
+                    displaySessions(sessions, 'waitingSessions');
+                }
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+            }
+        }
+
+        // Display sessions
+        function displaySessions(sessions, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            sessions.forEach(session => {
+                const sessionDiv = document.createElement('div');
+                sessionDiv.className = 'session-item';
+                sessionDiv.innerHTML = `
+                    <strong>Session #${session.id}</strong><br>
+                    Customer: ${session.customer ? session.customer.email : 'Unknown'}<br>
+                    <span class="status ${session.status}">${session.status}</span>
+                `;
+                sessionDiv.addEventListener('click', () => selectSession(session));
+                container.appendChild(sessionDiv);
+            });
+        }
+
+        // Select session
+        async function selectSession(session) {
+            currentSession = session;
+            
+            // Update header
+            document.getElementById('chatHeader').innerHTML = `
+                <h3>Session #${session.id}</h3>
+                <p>Customer: ${session.customer ? session.customer.email : 'Unknown'}</p>
+                <p>Status: <span class="status ${session.status}">${session.status}</span></p>
+                ${session.status === 'waiting' ? '<button id="assignSession" class="btn">Take Session</button>' : ''}
+            `;
+            
+            // Load messages
+            await loadSessionMessages(session.id);
+            
+            // Show message input if session is active
+            if (session.status === 'active' && session.employee_id === employeeId) {
+                document.getElementById('messageInput').classList.remove('hidden');
+            } else {
+                document.getElementById('messageInput').classList.add('hidden');
+            }
+            
+            // Add assign session handler
+            if (session.status === 'waiting') {
+                document.getElementById('assignSession').addEventListener('click', () => assignSession(session.id));
+            }
+            
+            // Update active session class
+            document.querySelectorAll('.session-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.session-item').classList.add('active');
+        }
+
+        // Load session messages
+        async function loadSessionMessages(sessionId) {
+            try {
+                const response = await fetch(`/chat/sessions/${sessionId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const session = await response.json();
+                    const messagesContainer = document.getElementById('chatMessages');
+                    messagesContainer.innerHTML = '';
+                    
+                    session.messages.forEach(message => {
+                        addMessageToChat(message.message, message.is_from_customer ? 'customer' : 'employee');
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        // Add message to chat
+        function addMessageToChat(message, sender) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            messageDiv.textContent = message;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Assign session
+        async function assignSession(sessionId) {
+            try {
+                const response = await fetch(`/chat/sessions/${sessionId}/assign`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    loadWaitingSessions();
+                    // Refresh current session
+                    if (currentSession && currentSession.id === sessionId) {
+                        currentSession.status = 'active';
+                        currentSession.employee_id = employeeId;
+                        selectSession(currentSession);
+                    }
+                }
+            } catch (error) {
+                console.error('Error assigning session:', error);
+            }
+        }
+
+        // Send message
+        function sendMessage() {
+            const messageText = document.getElementById('messageText');
+            const message = messageText.value.trim();
+            
+            if (message && currentSession && websocket) {
+                websocket.send(JSON.stringify({
+                    type: 'chat_message',
+                    session_id: currentSession.id,
+                    message: message,
+                    timestamp: new Date().toISOString()
+                }));
+                
+                addMessageToChat(message, 'employee');
+                messageText.value = '';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('sendMessage').addEventListener('click', sendMessage);
+        document.getElementById('messageText').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        document.getElementById('refreshSessions').addEventListener('click', loadWaitingSessions);
+    </script>
+</body>
+</html>
