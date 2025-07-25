@@ -8,11 +8,13 @@ class ChatSession(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    shop_id = Column(Integer, ForeignKey("shops.id"), nullable=False)
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
     status = Column(String(20), default="waiting")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     closed_at = Column(DateTime(timezone=True), nullable=True)
     
     customer = relationship("Customer", back_populates="chat_sessions")
+    shop = relationship("Shop")
     employee = relationship("Employee")
     messages = relationship("ChatMessage", back_populates="session")

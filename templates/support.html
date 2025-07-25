@@ -55,6 +55,29 @@
             padding: 20px;
             border-bottom: 1px solid #ddd;
             background-color: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-content {
+            display: flex;
+            flex-direction: column;
+        }
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .terminate-btn {
+            padding: 8px 16px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .terminate-btn:hover {
+            background-color: #d32f2f;
         }
         .chat-messages {
             flex: 1;
@@ -200,7 +223,13 @@
         
         <div class="chat-area">
             <div id="chatHeader" class="chat-header">
-                <h3>Select a chat session</h3>
+                <div class="header-content">
+                    <h3 id="chatTitle">Select a chat session</h3>
+                    <span id="sessionInfo"></span>
+                </div>
+                <div class="header-actions">
+                    <button id="terminateSession" class="terminate-btn hidden">Terminate Session</button>
+                </div>
             </div>
             <div id="chatMessages" class="chat-messages">
                 <!-- Chat messages will appear here -->
@@ -259,7 +288,7 @@
                         connectWebSocket();
                         
                         // Load initial data
-                        loadWaitingSessions();
+                        loadAllSessions();
                     }
                 } else {
                     document.getElementById('loginError').textContent = 'Invalid credentials';
@@ -281,13 +310,26 @@
                 const data = JSON.parse(event.data);
                 
                 if (data.type === 'new_session') {
-                    loadWaitingSessions();
+                    loadAllSessions();
                 } else if (data.type === 'message') {
                     if (currentSession && data.session_id === currentSession.id) {
                         addMessageToChat(data.message, 'customer');
                     }
                 } else if (data.type === 'unassigned_message') {
-                    loadWaitingSessions();
+                    loadAllSessions();
+                } else if (data.type === 'session_closed') {
+                    // Refresh sessions list when a session is closed
+                    loadAllSessions();
+                    
+                    // Clear current session if it was the closed one
+                    if (currentSession && currentSession.id === data.session_id) {
+                        currentSession = null;
+                        document.getElementById('chatTitle').textContent = 'Select a chat session';
+                        document.getElementById('sessionInfo').innerHTML = '';
+                        document.getElementById('terminateSession').classList.add('hidden');
+                        document.getElementById('chatMessages').innerHTML = '';
+                        document.getElementById('messageInput').classList.add('hidden');
+                    }
                 }
             };
             
@@ -311,8 +353,32 @@
                     displaySessions(sessions, 'waitingSessions');
                 }
             } catch (error) {
-                console.error('Error loading sessions:', error);
+                console.error('Error loading waiting sessions:', error);
             }
+        }
+
+        // Load active sessions
+        async function loadActiveSessions() {
+            try {
+                const response = await fetch('/chat/sessions/active', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const sessions = await response.json();
+                    displaySessions(sessions, 'activeSessions');
+                }
+            } catch (error) {
+                console.error('Error loading active sessions:', error);
+            }
+        }
+
+        // Load all sessions
+        async function loadAllSessions() {
+            await loadWaitingSessions();
+            await loadActiveSessions();
         }
 
         // Display sessions
@@ -326,6 +392,7 @@
                 sessionDiv.innerHTML = `
                     <strong>Session #${session.id}</strong><br>
                     Customer: ${session.customer ? session.customer.email : 'Unknown'}<br>
+                    Shop: ${session.shop ? session.shop.name : 'Unknown Shop'}<br>
                     <span class="status ${session.status}">${session.status}</span>
                 `;
                 sessionDiv.addEventListener('click', () => selectSession(session));
@@ -337,34 +404,59 @@
         async function selectSession(session) {
             currentSession = session;
             
-            // Update header
-            document.getElementById('chatHeader').innerHTML = `
-                <h3>Session #${session.id}</h3>
-                <p>Customer: ${session.customer ? session.customer.email : 'Unknown'}</p>
-                <p>Status: <span class="status ${session.status}">${session.status}</span></p>
-                ${session.status === 'waiting' ? '<button id="assignSession" class="btn">Take Session</button>' : ''}
+            // Update header content
+            document.getElementById('chatTitle').textContent = `Session #${session.id}`;
+            document.getElementById('sessionInfo').innerHTML = `
+                Customer: ${session.customer ? session.customer.email : 'Unknown'} | 
+                Status: <span class="status ${session.status}">${session.status}</span>
             `;
+            
+            // Show/hide terminate button and other actions
+            const headerActions = document.querySelector('.header-actions');
+            
+            // Clear existing action buttons
+            headerActions.innerHTML = '<button id="terminateSession" class="terminate-btn hidden">Terminate Session</button>';
+            
+            // Get the new terminate button reference
+            const terminateBtn = document.getElementById('terminateSession');
+            
+            if (session.status === 'waiting') {
+                // Add assign button for waiting sessions
+                const assignBtn = document.createElement('button');
+                assignBtn.id = 'assignSession';
+                assignBtn.className = 'btn';
+                assignBtn.textContent = 'Take Session';
+                assignBtn.style.marginRight = '10px';
+                assignBtn.addEventListener('click', () => assignSession(session.id));
+                headerActions.insertBefore(assignBtn, terminateBtn);
+            } else if (session.status === 'active' && session.employee_id === employeeId) {
+                // Show terminate button for active sessions assigned to current employee
+                terminateBtn.classList.remove('hidden');
+                terminateBtn.addEventListener('click', () => terminateSession(session.id));
+            }
             
             // Load messages
             await loadSessionMessages(session.id);
             
-            // Show message input if session is active
+            // Show message input if session is active and assigned to current employee
             if (session.status === 'active' && session.employee_id === employeeId) {
                 document.getElementById('messageInput').classList.remove('hidden');
             } else {
                 document.getElementById('messageInput').classList.add('hidden');
             }
             
-            // Add assign session handler
-            if (session.status === 'waiting') {
-                document.getElementById('assignSession').addEventListener('click', () => assignSession(session.id));
-            }
-            
             // Update active session class
             document.querySelectorAll('.session-item').forEach(item => {
                 item.classList.remove('active');
             });
-            event.target.closest('.session-item').classList.add('active');
+            
+            // Find and mark the current session as active
+            const sessionElements = document.querySelectorAll('.session-item');
+            sessionElements.forEach(item => {
+                if (item.innerHTML.includes(`Session #${session.id}`)) {
+                    item.classList.add('active');
+                }
+            });
         }
 
         // Load session messages
@@ -411,7 +503,7 @@
                 });
                 
                 if (response.ok) {
-                    loadWaitingSessions();
+                    loadAllSessions();
                     // Refresh current session
                     if (currentSession && currentSession.id === sessionId) {
                         currentSession.status = 'active';
@@ -421,6 +513,46 @@
                 }
             } catch (error) {
                 console.error('Error assigning session:', error);
+            }
+        }
+
+        // Terminate session
+        async function terminateSession(sessionId) {
+            if (!confirm('Are you sure you want to terminate this session? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/chat/sessions/${sessionId}/close`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    // Refresh sessions list
+                    loadAllSessions();
+                    
+                    // Clear current session if it was the terminated one
+                    if (currentSession && currentSession.id === sessionId) {
+                        currentSession = null;
+                        document.getElementById('chatTitle').textContent = 'Select a chat session';
+                        document.getElementById('sessionInfo').innerHTML = '';
+                        document.getElementById('terminateSession').classList.add('hidden');
+                        document.getElementById('chatMessages').innerHTML = '';
+                        document.getElementById('messageInput').classList.add('hidden');
+                    }
+                    
+                    alert('Session terminated successfully');
+                } else {
+                    const error = await response.json();
+                    alert(`Error terminating session: ${error.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error terminating session:', error);
+                alert('Error terminating session. Please try again.');
             }
         }
 
@@ -449,7 +581,7 @@
                 sendMessage();
             }
         });
-        document.getElementById('refreshSessions').addEventListener('click', loadWaitingSessions);
+        document.getElementById('refreshSessions').addEventListener('click', loadAllSessions);
     </script>
 </body>
 </html>

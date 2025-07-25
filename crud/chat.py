@@ -5,8 +5,8 @@ import models
 import schemas
 
 
-def create_chat_session(db: Session, customer_id: int) -> models.ChatSession:
-    db_session = models.ChatSession(customer_id=customer_id)
+def create_chat_session(db: Session, customer_id: int, shop_id: int) -> models.ChatSession:
+    db_session = models.ChatSession(customer_id=customer_id, shop_id=shop_id)
     db.add(db_session)
     db.commit()
     db.refresh(db_session)
@@ -17,6 +17,12 @@ def get_chat_session(db: Session, session_id: int) -> Optional[models.ChatSessio
 
 def get_waiting_chat_sessions(db: Session) -> List[models.ChatSession]:
     return db.query(models.ChatSession).filter(models.ChatSession.status == "waiting").all()
+
+def get_waiting_chat_sessions_by_shop(db: Session, shop_id: int) -> List[models.ChatSession]:
+    return db.query(models.ChatSession).filter(
+        models.ChatSession.status == "waiting",
+        models.ChatSession.shop_id == shop_id
+    ).all()
 
 def assign_employee_to_session(db: Session, session_id: int, employee_id: int) -> Optional[models.ChatSession]:
     db_session = get_chat_session(db, session_id)
