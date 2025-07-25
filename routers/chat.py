@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from sqlalchemy.orm import Session
 import json
 import asyncio
+from datetime import datetime
 import schemas
 import crud
 import models
@@ -57,8 +58,13 @@ class ConnectionManager:
     
     async def send_to_session(self, message: str, session_id: int):
         """Send message to customer via session ID"""
+        print(f"send_to_session called for session {session_id}")
+        print(f"Available session connections: {list(self.session_connections.keys())}")
         if session_id in self.session_connections:
+            print(f"Sending message to session {session_id}")
             await self.session_connections[session_id].send_text(message)
+        else:
+            print(f"Session {session_id} not found in session_connections")
 
     async def broadcast_to_employees(self, message: str):
         for connection in self.employee_connections.values():
@@ -234,7 +240,8 @@ async def websocket_employee(websocket: WebSocket, employee_id: int):
                 # Get customer session for this message
                 db = next(get_db())
                 session = crud.get_chat_session(db, message_data["session_id"])
-                if session and session.customer:
+                employee_name = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+                if session and session.customer and employee_name:
                     print(f"Sending message from employee {employee_id} to session {session.id}")
                     print(f"Session connections: {list(manager.session_connections.keys())}")
                     # Send message to customer via session
@@ -243,7 +250,8 @@ async def websocket_employee(websocket: WebSocket, employee_id: int):
                             "type": "message",
                             "message": message_data["message"],
                             "from": "support",
-                            "timestamp": message_data.get("timestamp")
+                            "timestamp": message_data.get("timestamp"),
+                            "agent_name": employee_name.username
                         }),
                         session.id
                     )
@@ -331,6 +339,7 @@ async def websocket_customer(websocket: WebSocket, customer_email: str):
                             "message": message_data["message"],
                             "from": "customer",
                             "customer_email": customer_email,
+                            "customer_name": customer.name,
                             "timestamp": message_data.get("timestamp")
                         }),
                         active_session.employee_id
@@ -343,6 +352,7 @@ async def websocket_customer(websocket: WebSocket, customer_email: str):
                             "session_id": active_session.id,
                             "message": message_data["message"],
                             "customer_email": customer_email,
+                            "customer_name": customer.name,
                             "shop_id": active_session.shop_id,
                             "timestamp": message_data.get("timestamp")
                         }),

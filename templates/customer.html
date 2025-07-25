@@ -181,6 +181,13 @@
             font-size: 14px;
         }
         
+        .customer-name {
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
         .message-input-container {
             padding: 20px;
             border-top: 1px solid rgba(0,0,0,0.05);
@@ -512,14 +519,6 @@
                 messageText.disabled = false;
                 sendButton.disabled = false;
                 messageText.focus();
-                
-                // If we have a session ID, establish the session mapping
-                if (currentSessionId) {
-                    websocket.send(JSON.stringify({
-                        type: 'session_connect',
-                        session_id: currentSessionId
-                    }));
-                }
             };
             
             websocket.onmessage = (event) => {
@@ -638,8 +637,26 @@
                     currentSessionId = session.id;
                     updateChatStatus('Chat session created. Waiting for support agent...');
                     
-                    // Add initial customer message
-                    addMessageToChat('Hello! I need assistance.', 'customer', new Date().toISOString());
+                    // Establish session mapping with WebSocket
+                    if (websocket && isConnected) {
+                        websocket.send(JSON.stringify({
+                            type: 'session_connect',
+                            session_id: currentSessionId
+                        }));
+                    }
+                    
+                    // Add initial customer message to UI
+                    addMessageToChat('Hello! I need assistance.', 'customer', new Date().toISOString(), null, customerName);
+                    
+                    // Send initial message through WebSocket so employee receives it
+                    if (websocket && isConnected) {
+                        websocket.send(JSON.stringify({
+                            type: 'chat_message',
+                            session_id: currentSessionId,
+                            message: 'Hello! I need assistance.',
+                            timestamp: new Date().toISOString()
+                        }));
+                    }
                     
                 } else {
                     throw new Error('Failed to create session');
@@ -665,7 +682,7 @@
         }
 
         // Add message to chat
-        function addMessageToChat(message, sender, timestamp, agentName = null) {
+        function addMessageToChat(message, sender, timestamp, agentName = null, customerName = null) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${sender}`;
             
@@ -679,6 +696,14 @@
                 const nameDiv = document.createElement('div');
                 nameDiv.className = 'support-name';
                 nameDiv.textContent = agentName;
+                messageDiv.appendChild(nameDiv);
+            }
+            
+            // Add customer name if available
+            if (sender === 'customer' && customerName) {
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'customer-name';
+                nameDiv.textContent = customerName;
                 messageDiv.appendChild(nameDiv);
             }
             
@@ -722,7 +747,7 @@
                     timestamp: new Date().toISOString()
                 }));
                 
-                addMessageToChat(message, 'customer', new Date().toISOString());
+                addMessageToChat(message, 'customer', new Date().toISOString(), null, customerName);
                 messageText.value = '';
             }
         }
