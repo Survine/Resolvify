@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from auth import auth_router
 from routers import shops, employees, teams, roles, chat
-from database import engine, get_db
+from databases.database import engine, get_db
 from permissions import create_default_permissions, create_default_roles
 import models 
 

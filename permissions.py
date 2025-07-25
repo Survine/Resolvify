@@ -3,7 +3,7 @@ from fastapi import HTTPException, status, Depends
 from sqlalchemy.orm import Session
 import models
 from auth.auth import get_current_active_employee
-from database import get_db
+from databases.database import get_db
 
 class PermissionChecker:
     def __init__(self, resource: str, action: str):

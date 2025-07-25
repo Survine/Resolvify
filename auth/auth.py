@@ -8,7 +8,7 @@ from fastapi.security import OAuth2PasswordBearer
 from decouple import config
 import models
 import schemas
-from database import get_db
+from databases.database import get_db
 
 SECRET_KEY = config("SECRET_KEY")
 ALGORITHM = config("ALGORITHM", default="HS256")
