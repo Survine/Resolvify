@@ -3,191 +3,387 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Support - Employee Dashboard</title>
+    <title>Customer Support - Agent Dashboard</title>
     <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+            --text-color: #333;
+            --text-light: #7f8c8d;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background-color: #f5f5f5;
+            color: var(--text-color);
         }
+        
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            max-width: 1400px;
+            margin: 20px auto;
             display: grid;
-            grid-template-columns: 300px 1fr;
+            grid-template-columns: 320px 1fr;
             gap: 20px;
-            height: 80vh;
+            height: 90vh;
         }
+        
         .sidebar {
             background: white;
-            border-radius: 8px;
+            border-radius: 10px;
             padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .chat-area {
-            background: white;
-            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .waiting-sessions {
-            max-height: 300px;
+        
+        .chat-area {
+            background: white;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 15px 0 10px 0;
+            color: var(--primary-color);
+        }
+        
+        .sessions-container {
+            flex: 1;
             overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 10px;
+            margin-bottom: 15px;
         }
+        
+        .waiting-sessions, .active-sessions {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
         .session-item {
-            padding: 10px;
+            padding: 12px 15px;
             border-bottom: 1px solid #eee;
             cursor: pointer;
             transition: background-color 0.2s;
         }
+        
         .session-item:hover {
             background-color: #f8f9fa;
         }
+        
         .session-item.active {
             background-color: #e3f2fd;
+            border-left: 3px solid var(--secondary-color);
         }
+        
+        .session-item.unread {
+            background-color: #fff8e1;
+        }
+        
         .chat-header {
-            padding: 20px;
-            border-bottom: 1px solid #ddd;
-            background-color: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            background-color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
+        
         .header-content {
-            display: flex;
-            flex-direction: column;
+            flex: 1;
         }
+        
+        .chat-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .session-info {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-top: 5px;
+        }
+        
         .header-actions {
             display: flex;
             gap: 10px;
         }
-        .terminate-btn {
+        
+        .btn {
             padding: 8px 16px;
-            background-color: #f44336;
-            color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        .terminate-btn:hover {
-            background-color: #d32f2f;
+        
+        .btn i {
+            font-size: 14px;
         }
+        
+        .btn-primary {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
         .chat-messages {
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            max-height: 400px;
+            background-color: #fafafa;
         }
+        
         .message {
             margin-bottom: 15px;
-            padding: 10px;
+            padding: 12px 16px;
             border-radius: 8px;
-            max-width: 70%;
+            max-width: 75%;
+            word-wrap: break-word;
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            animation: fadeIn 0.3s ease-out;
         }
+        
         .message.customer {
-            background-color: #e1f5fe;
+            background-color: white;
+            border: 1px solid #e0e0e0;
             margin-left: 0;
             margin-right: auto;
+            border-top-left-radius: 0;
         }
+        
         .message.employee {
-            background-color: #f3e5f5;
+            background-color: #e3f2fd;
             margin-left: auto;
             margin-right: 0;
+            border-top-right-radius: 0;
         }
+        
+        .message-timestamp {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+            text-align: right;
+        }
+        
+        .customer-name {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
         .message-input {
-            padding: 20px;
-            border-top: 1px solid #ddd;
+            padding: 15px 20px;
+            border-top: 1px solid #e0e0e0;
+            background-color: white;
             display: flex;
             gap: 10px;
         }
+        
         .message-input input {
             flex: 1;
-            padding: 10px;
+            padding: 12px 15px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border 0.3s;
         }
+        
+        .message-input input:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
         .message-input button {
-            padding: 10px 20px;
-            background-color: #2196f3;
+            padding: 12px 20px;
+            background-color: var(--secondary-color);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.3s;
         }
+        
         .message-input button:hover {
-            background-color: #1976d2;
+            background-color: #2980b9;
         }
+        
         .login-form {
             max-width: 400px;
             margin: 100px auto;
             padding: 30px;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
+        
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
+        
         .form-group label {
             display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--primary-color);
         }
+        
         .form-group input {
             width: 100%;
-            padding: 10px;
+            padding: 12px 15px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 6px;
             box-sizing: border-box;
+            font-size: 14px;
+            transition: border 0.3s;
         }
-        .btn {
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .login-btn {
             width: 100%;
-            padding: 12px;
-            background-color: #2196f3;
+            padding: 14px;
+            background-color: var(--secondary-color);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 16px;
+            font-weight: 500;
+            transition: background-color 0.3s;
         }
-        .btn:hover {
-            background-color: #1976d2;
+        
+        .login-btn:hover {
+            background-color: #2980b9;
         }
+        
         .error {
-            color: #f44336;
-            margin-top: 10px;
+            color: var(--danger-color);
+            margin-top: 15px;
+            text-align: center;
+            font-size: 14px;
         }
+        
         .status {
             display: inline-block;
             padding: 4px 8px;
             border-radius: 4px;
             font-size: 12px;
-            font-weight: bold;
+            font-weight: 500;
+            margin-top: 5px;
         }
+        
         .status.waiting {
-            background-color: #fff3cd;
-            color: #856404;
+            background-color: rgba(241, 196, 15, 0.1);
+            color: var(--warning-color);
         }
+        
         .status.active {
-            background-color: #d1ecf1;
-            color: #0c5460;
+            background-color: rgba(46, 204, 113, 0.1);
+            color: var(--success-color);
         }
+        
         .hidden {
             display: none;
         }
+        
+        
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--text-light);
+            border-radius: 50%;
+            animation: typingAnimation 1.4s infinite ease-in-out;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typingAnimation {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                height: auto;
+                min-height: 90vh;
+            }
+            
+            .sidebar {
+                order: 2;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                margin: 0;
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .sidebar, .chat-area {
+                border-radius: 0;
+            }
+        }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
     <!-- Login Form -->
     <div id="loginForm" class="login-form">
-        <h2>Employee Login</h2>
+        <h2 style="text-align: center; margin-bottom: 25px; color: var(--primary-color);">Agent Login</h2>
         <form id="login">
             <div class="form-group">
                 <label for="username">Username:</label>
@@ -197,7 +393,7 @@
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            <button type="submit" class="btn">Login</button>
+            <button type="submit" class="login-btn">Login</button>
             <div id="loginError" class="error hidden"></div>
         </form>
     </div>
@@ -205,38 +401,52 @@
     <!-- Main Dashboard -->
     <div id="dashboard" class="container hidden">
         <div class="sidebar">
-            <h3>Employee Dashboard</h3>
-            <p id="employeeInfo"></p>
+            <h3 style="margin: 0 0 10px 0; color: var(--primary-color);">Agent Dashboard</h3>
+            <p id="employeeInfo" style="margin: 0 0 20px 0; font-size: 14px; color: var(--text-light);"></p>
             
-            <h4>Waiting Sessions</h4>
-            <div id="waitingSessions" class="waiting-sessions">
-                <!-- Waiting sessions will be populated here -->
+            <div class="sessions-container">
+                <h4 class="section-title">Waiting Sessions</h4>
+                <div id="waitingSessions" class="waiting-sessions">
+                    <!-- Waiting sessions will be populated here -->
+                </div>
+                
+                <h4 class="section-title">My Active Sessions</h4>
+                <div id="activeSessions" class="active-sessions">
+                    <!-- Active sessions will be populated here -->
+                </div>
             </div>
             
-            <h4>My Active Sessions</h4>
-            <div id="activeSessions" class="waiting-sessions">
-                <!-- Active sessions will be populated here -->
-            </div>
-            
-            <button id="refreshSessions" class="btn" style="margin-top: 10px;">Refresh Sessions</button>
+            <button id="refreshSessions" class="btn btn-primary" style="margin-top: auto;">
+                <i class="fas fa-sync-alt"></i> Refresh Sessions
+            </button>
         </div>
         
         <div class="chat-area">
             <div id="chatHeader" class="chat-header">
                 <div class="header-content">
-                    <h3 id="chatTitle">Select a chat session</h3>
-                    <span id="sessionInfo"></span>
+                    <h3 id="chatTitle" class="chat-title">Select a chat session</h3>
+                    <div id="sessionInfo" class="session-info"></div>
                 </div>
                 <div class="header-actions">
-                    <button id="terminateSession" class="terminate-btn hidden">Terminate Session</button>
+                    <button id="terminateSession" class="btn btn-danger hidden">
+                        <i class="fas fa-times"></i> End Session
+                    </button>
                 </div>
             </div>
+            
             <div id="chatMessages" class="chat-messages">
                 <!-- Chat messages will appear here -->
             </div>
+            
+            <div id="typingIndicatorContainer" class="typing-indicator hidden">
+                <span id="typingCustomerName"></span> is typing <span></span><span></span><span></span>
+            </div>
+            
             <div id="messageInput" class="message-input hidden">
                 <input type="text" id="messageText" placeholder="Type your message...">
-                <button id="sendMessage">Send</button>
+                <button id="sendMessage">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -244,23 +454,29 @@
     <script>
         let token = null;
         let employeeId = null;
+        let employeeName = '';
         let websocket = null;
         let currentSession = null;
+        let typingTimeout = null;
 
         // Login functionality
         document.getElementById('login').addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-
+            const loginBtn = document.querySelector('.login-btn');
+            
+            // Show loading state
+            loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+            loginBtn.disabled = true;
+            
             try {
-                const formData = new FormData();
-                formData.append('username', username);
-                formData.append('password', password);
-
                 const response = await fetch('/auth/token', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
                 });
 
                 if (response.ok) {
@@ -277,8 +493,10 @@
                     if (employeeResponse.ok) {
                         const employee = await employeeResponse.json();
                         employeeId = employee.id;
+                        employeeName = `${employee.first_name} ${employee.last_name}`;
+                        
                         document.getElementById('employeeInfo').textContent = 
-                            `${employee.first_name} ${employee.last_name} (${employee.role.name})`;
+                            `${employeeName} • ${employee.role.name}`;
                         
                         // Hide login form and show dashboard
                         document.getElementById('loginForm').classList.add('hidden');
@@ -291,13 +509,18 @@
                         loadAllSessions();
                     }
                 } else {
-                    document.getElementById('loginError').textContent = 'Invalid credentials';
+                    const error = await response.json();
+                    document.getElementById('loginError').textContent = error.detail || 'Invalid credentials';
                     document.getElementById('loginError').classList.remove('hidden');
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                document.getElementById('loginError').textContent = 'Login failed';
+                document.getElementById('loginError').textContent = 'Login failed. Please try again.';
                 document.getElementById('loginError').classList.remove('hidden');
+            } finally {
+                // Reset login button
+                loginBtn.innerHTML = 'Login';
+                loginBtn.disabled = false;
             }
         });
 
@@ -310,13 +533,40 @@
                 const data = JSON.parse(event.data);
                 
                 if (data.type === 'new_session') {
+                    // New session available
                     loadAllSessions();
-                } else if (data.type === 'message') {
-                    if (currentSession && data.session_id === currentSession.id) {
-                        addMessageToChat(data.message, 'customer');
+                    
+                    // Notify agent if they're not viewing any session
+                    if (!currentSession) {
+                        showNotification('New chat session available');
                     }
-                } else if (data.type === 'unassigned_message') {
-                    loadAllSessions();
+                    
+                } else if (data.type === 'message') {
+                    // Handle incoming message
+                    if (currentSession && data.session_id === currentSession.id) {
+                        // Add message to current chat
+                        addMessageToChat(data.message, 'customer', data.timestamp, data.customer_name);
+                        
+                        // Mark as unread if chat is not focused
+                        if (!document.hasFocus()) {
+                            showNotification(`New message from ${data.customer_name || 'customer'}`);
+                        }
+                        
+                    } else {
+                        // Mark session as unread in the list
+                        markSessionAsUnread(data.session_id);
+                    }
+                    
+                } else if (data.type === 'typing') {
+                    // Show typing indicator
+                    if (currentSession && data.session_id === currentSession.id) {
+                        showTypingIndicator(data.customer_name || 'Customer');
+                    }
+                    
+                } else if (data.type === 'stop_typing') {
+                    // Hide typing indicator
+                    hideTypingIndicator();
+                    
                 } else if (data.type === 'session_closed') {
                     // Refresh sessions list when a session is closed
                     loadAllSessions();
@@ -329,6 +579,7 @@
                         document.getElementById('terminateSession').classList.add('hidden');
                         document.getElementById('chatMessages').innerHTML = '';
                         document.getElementById('messageInput').classList.add('hidden');
+                        hideTypingIndicator();
                     }
                 }
             };
@@ -337,6 +588,19 @@
                 console.log('WebSocket connection closed');
                 setTimeout(connectWebSocket, 3000); // Reconnect after 3 seconds
             };
+        }
+
+        // Show desktop notification
+        function showNotification(message) {
+            if (Notification.permission === 'granted') {
+                new Notification('Customer Support', { body: message });
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        new Notification('Customer Support', { body: message });
+                    }
+                });
+            }
         }
 
         // Load waiting sessions
@@ -377,8 +641,7 @@
 
         // Load all sessions
         async function loadAllSessions() {
-            await loadWaitingSessions();
-            await loadActiveSessions();
+            await Promise.all([loadWaitingSessions(), loadActiveSessions()]);
         }
 
         // Display sessions
@@ -386,36 +649,76 @@
             const container = document.getElementById(containerId);
             container.innerHTML = '';
             
+            if (sessions.length === 0) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.className = 'session-item';
+                emptyMsg.textContent = containerId === 'waitingSessions' ? 
+                    'No waiting sessions' : 'No active sessions';
+                container.appendChild(emptyMsg);
+                return;
+            }
+            
             sessions.forEach(session => {
                 const sessionDiv = document.createElement('div');
                 sessionDiv.className = 'session-item';
+                if (session.unread) sessionDiv.classList.add('unread');
+                
                 sessionDiv.innerHTML = `
-                    <strong>Session #${session.id}</strong><br>
-                    Customer: ${session.customer ? session.customer.email : 'Unknown'}<br>
-                    Shop: ${session.shop ? session.shop.name : 'Unknown Shop'}<br>
-                    <span class="status ${session.status}">${session.status}</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong>Session #${session.id}</strong>
+                        <span class="status ${session.status}">${session.status}</span>
+                    </div>
+                    <div style="margin-top: 5px; font-size: 13px;">
+                        ${session.customer ? session.customer.name : 'Unknown customer'}
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-light); margin-top: 3px;">
+                        ${session.shop ? session.shop.name : 'Unknown shop'}
+                    </div>
+                    ${session.last_message ? 
+                        `<div style="font-size: 12px; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${session.last_message}
+                        </div>` : ''
+                    }
                 `;
+                
                 sessionDiv.addEventListener('click', () => selectSession(session));
                 container.appendChild(sessionDiv);
             });
         }
 
+        // Mark session as unread
+        function markSessionAsUnread(sessionId) {
+            const sessionItems = document.querySelectorAll('.session-item');
+            sessionItems.forEach(item => {
+                if (item.innerHTML.includes(`Session #${sessionId}`)) {
+                    item.classList.add('unread');
+                }
+            });
+        }
+
         // Select session
         async function selectSession(session) {
+            // Clear unread marker
+            const sessionItems = document.querySelectorAll('.session-item');
+            sessionItems.forEach(item => {
+                if (item.innerHTML.includes(`Session #${session.id}`)) {
+                    item.classList.remove('unread');
+                }
+            });
+            
             currentSession = session;
             
             // Update header content
             document.getElementById('chatTitle').textContent = `Session #${session.id}`;
             document.getElementById('sessionInfo').innerHTML = `
-                Customer: ${session.customer ? session.customer.email : 'Unknown'} | 
+                Customer: ${session.customer ? session.customer.name : 'Unknown'} | 
+                Shop: ${session.shop ? session.shop.name : 'Unknown'} |
                 Status: <span class="status ${session.status}">${session.status}</span>
             `;
             
-            // Show/hide terminate button and other actions
-            const headerActions = document.querySelector('.header-actions');
-            
             // Clear existing action buttons
-            headerActions.innerHTML = '<button id="terminateSession" class="terminate-btn hidden">Terminate Session</button>';
+            const headerActions = document.querySelector('.header-actions');
+            headerActions.innerHTML = '<button id="terminateSession" class="btn btn-danger hidden"><i class="fas fa-times"></i> End Session</button>';
             
             // Get the new terminate button reference
             const terminateBtn = document.getElementById('terminateSession');
@@ -423,27 +726,29 @@
             if (session.status === 'waiting') {
                 // Add assign button for waiting sessions
                 const assignBtn = document.createElement('button');
-                assignBtn.id = 'assignSession';
-                assignBtn.className = 'btn';
-                assignBtn.textContent = 'Take Session';
-                assignBtn.style.marginRight = '10px';
+                assignBtn.className = 'btn btn-primary';
+                assignBtn.innerHTML = '<i class="fas fa-user-check"></i> Take Session';
                 assignBtn.addEventListener('click', () => assignSession(session.id));
                 headerActions.insertBefore(assignBtn, terminateBtn);
+                
+                // Hide message input
+                document.getElementById('messageInput').classList.add('hidden');
+                
             } else if (session.status === 'active' && session.employee_id === employeeId) {
                 // Show terminate button for active sessions assigned to current employee
                 terminateBtn.classList.remove('hidden');
                 terminateBtn.addEventListener('click', () => terminateSession(session.id));
+                
+                // Show message input
+                document.getElementById('messageInput').classList.remove('hidden');
+                document.getElementById('messageText').focus();
+            } else {
+                // Hide message input for other cases
+                document.getElementById('messageInput').classList.add('hidden');
             }
             
             // Load messages
             await loadSessionMessages(session.id);
-            
-            // Show message input if session is active and assigned to current employee
-            if (session.status === 'active' && session.employee_id === employeeId) {
-                document.getElementById('messageInput').classList.remove('hidden');
-            } else {
-                document.getElementById('messageInput').classList.add('hidden');
-            }
             
             // Update active session class
             document.querySelectorAll('.session-item').forEach(item => {
@@ -474,8 +779,16 @@
                     messagesContainer.innerHTML = '';
                     
                     session.messages.forEach(message => {
-                        addMessageToChat(message.message, message.is_from_customer ? 'customer' : 'employee');
+                        addMessageToChat(
+                            message.message, 
+                            message.is_from_customer ? 'customer' : 'employee',
+                            message.timestamp,
+                            message.is_from_customer ? (session.customer?.name || 'Customer') : employeeName
+                        );
                     });
+                    
+                    // Scroll to bottom
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 }
             } catch (error) {
                 console.error('Error loading messages:', error);
@@ -483,42 +796,104 @@
         }
 
         // Add message to chat
-        function addMessageToChat(message, sender) {
+        function addMessageToChat(message, sender, timestamp, name = null) {
             const messagesContainer = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${sender}`;
-            messageDiv.textContent = message;
+            messageDiv.className = `message ${sender === 'customer' ? 'customer' : 'employee'}`;
+            
+            // Add sender name if available
+            if (name) {
+                const nameDiv = document.createElement('div');
+                nameDiv.className = sender === 'customer' ? 'customer-name' : 'employee-name';
+                nameDiv.textContent = name;
+                messageDiv.appendChild(nameDiv);
+            }
+            
+            const messageContent = document.createElement('div');
+            messageContent.textContent = message;
+            messageDiv.appendChild(messageContent);
+            
+            if (timestamp) {
+                const timestampDiv = document.createElement('div');
+                timestampDiv.className = 'message-timestamp';
+                timestampDiv.textContent = formatTimestamp(timestamp);
+                messageDiv.appendChild(timestampDiv);
+            }
+            
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
+        // Format timestamp
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Show typing indicator
+        function showTypingIndicator(customerName) {
+            const typingIndicator = document.getElementById('typingIndicatorContainer');
+            document.getElementById('typingCustomerName').textContent = customerName;
+            typingIndicator.classList.remove('hidden');
+            
+            // Clear any existing timeout
+            if (typingTimeout) clearTimeout(typingTimeout);
+            
+            // Hide after 3 seconds if no more typing events
+            typingTimeout = setTimeout(() => {
+                hideTypingIndicator();
+            }, 3000);
+        }
+
+        // Hide typing indicator
+        function hideTypingIndicator() {
+            document.getElementById('typingIndicatorContainer').classList.add('hidden');
+        }
+
         // Assign session
-        async function assignSession(sessionId) {
-            try {
-                const response = await fetch(`/chat/sessions/${sessionId}/assign`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+        // In the assignSession function:
+async function assignSession(sessionId) {
+    try {
+        const response = await fetch(`/chat/sessions/${sessionId}/assign`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            loadAllSessions();
+            
+            if (currentSession && currentSession.id === sessionId) {
+                currentSession.status = 'active';
+                currentSession.employee_id = employeeId;
+                selectSession(currentSession);
                 
-                if (response.ok) {
-                    loadAllSessions();
-                    // Refresh current session
-                    if (currentSession && currentSession.id === sessionId) {
-                        currentSession.status = 'active';
-                        currentSession.employee_id = employeeId;
-                        selectSession(currentSession);
-                    }
+                // Send welcome message - MAKE SURE THIS IS EXECUTING
+                const welcomeMessage = `Hello, I'm ${employeeName}. How can I help you today?`;
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    websocket.send(JSON.stringify({
+                        type: 'chat_message',
+                        session_id: sessionId,
+                        message: welcomeMessage,
+                        timestamp: new Date().toISOString(),
+                        is_from_customer: false,
+                        agent_name: employeeName  // Make sure this is included
+                    }));
+                    
+                    // Also add it to the agent's own view
+                    addMessageToChat(welcomeMessage, 'employee', new Date().toISOString(), employeeName);
                 }
-            } catch (error) {
-                console.error('Error assigning session:', error);
             }
         }
+    } catch (error) {
+        console.error('Error assigning session:', error);
+    }
+}
 
         // Terminate session
         async function terminateSession(sessionId) {
-            if (!confirm('Are you sure you want to terminate this session? This action cannot be undone.')) {
+            if (!confirm('Are you sure you want to end this session? The customer will no longer be able to send messages.')) {
                 return;
             }
             
@@ -528,7 +903,10 @@
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({
+                        closed_by: 'agent'
+                    })
                 });
                 
                 if (response.ok) {
@@ -544,11 +922,9 @@
                         document.getElementById('chatMessages').innerHTML = '';
                         document.getElementById('messageInput').classList.add('hidden');
                     }
-                    
-                    alert('Session terminated successfully');
                 } else {
                     const error = await response.json();
-                    alert(`Error terminating session: ${error.detail || 'Unknown error'}`);
+                    alert(`Error: ${error.detail || 'Failed to terminate session'}`);
                 }
             } catch (error) {
                 console.error('Error terminating session:', error);
@@ -562,6 +938,13 @@
             const message = messageText.value.trim();
             
             if (message && currentSession && websocket) {
+                // Send typing stop event
+                websocket.send(JSON.stringify({
+                    type: 'stop_typing',
+                    session_id: currentSession.id
+                }));
+                
+                // Send the actual message
                 websocket.send(JSON.stringify({
                     type: 'chat_message',
                     session_id: currentSession.id,
@@ -569,19 +952,42 @@
                     timestamp: new Date().toISOString()
                 }));
                 
-                addMessageToChat(message, 'employee');
+                addMessageToChat(message, 'employee', new Date().toISOString(), employeeName);
                 messageText.value = '';
+            }
+        }
+
+        // Handle typing events
+        function handleTyping() {
+            if (websocket && currentSession) {
+                websocket.send(JSON.stringify({
+                    type: 'typing',
+                    session_id: currentSession.id
+                }));
             }
         }
 
         // Event listeners
         document.getElementById('sendMessage').addEventListener('click', sendMessage);
         document.getElementById('messageText').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
                 sendMessage();
             }
         });
+        
+        document.getElementById('messageText').addEventListener('input', () => {
+            handleTyping();
+        });
+        
         document.getElementById('refreshSessions').addEventListener('click', loadAllSessions);
+
+        // Request notification permission on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                Notification.requestPermission();
+            }
+        });
     </script>
 </body>
 </html>

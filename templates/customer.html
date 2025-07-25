@@ -5,135 +5,165 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Support Chat</title>
     <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+            --text-color: #333;
+            --text-light: #7f8c8d;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
+            padding: 0;
+            background-color: #f9f9f9;
+            color: var(--text-color);
         }
         
         .chat-container {
-            max-width: 600px;
-            margin: 0 auto;
+            max-width: 800px;
+            margin: 20px auto;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            height: 80vh;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            height: 90vh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
         
         .chat-header {
             padding: 20px;
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #ddd;
-            border-radius: 8px 8px 0 0;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 10px 10px 0 0;
         }
         
         .chat-header h2 {
             margin: 0 0 5px 0;
-            color: #333;
-            font-size: 24px;
+            font-size: 22px;
+            font-weight: 600;
         }
         
         .chat-header p {
             margin: 0;
-            color: #666;
+            opacity: 0.9;
             font-size: 14px;
         }
         
         .connection-status {
             padding: 10px 20px;
-            font-size: 12px;
+            font-size: 13px;
             text-align: center;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .connection-status.connected {
-            background-color: #d1ecf1;
-            color: #0c5460;
+            background-color: rgba(46, 204, 113, 0.1);
+            color: var(--success-color);
         }
         
         .connection-status.disconnected {
-            background-color: #f8d7da;
-            color: #721c24;
+            background-color: rgba(231, 76, 60, 0.1);
+            color: var(--danger-color);
         }
         
         .connection-status.waiting {
-            background-color: #fff3cd;
-            color: #856404;
+            background-color: rgba(241, 196, 15, 0.1);
+            color: var(--warning-color);
+        }
+        
+        .connection-status i {
+            margin-right: 8px;
+            font-size: 14px;
         }
         
         .chat-status {
             padding: 15px 20px;
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #ddd;
+            background-color: var(--light-color);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
             font-size: 14px;
-            color: #666;
+            color: var(--text-light);
         }
         
         .chat-messages {
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            background-color: white;
+            background-color: #fafafa;
         }
         
         .welcome-message {
-            background-color: #e3f2fd;
-            border: 1px solid #bbdefb;
-            border-radius: 8px;
+            background-color: var(--light-color);
+            border-left: 4px solid var(--secondary-color);
+            border-radius: 4px;
             padding: 20px;
-            text-align: center;
-            color: #1976d2;
             margin-bottom: 20px;
         }
         
         .welcome-message h3 {
             margin: 0 0 10px 0;
             font-size: 18px;
+            color: var(--primary-color);
         }
         
         .welcome-message p {
             margin: 0;
             font-size: 14px;
+            line-height: 1.5;
         }
         
         .message {
             margin-bottom: 15px;
             padding: 12px 16px;
             border-radius: 8px;
-            max-width: 70%;
+            max-width: 75%;
             word-wrap: break-word;
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
         
         .message.customer {
-            background-color: #f3e5f5;
+            background-color: #e3f2fd;
             margin-left: auto;
             margin-right: 0;
+            border-top-right-radius: 0;
         }
         
         .message.support {
-            background-color: #e1f5fe;
+            background-color: white;
             margin-left: 0;
             margin-right: auto;
+            border-top-left-radius: 0;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .message.support:first-child {
+            animation: fadeIn 0.3s ease-out;
         }
         
         .message.system {
-            background-color: #fff3e0;
-            border: 1px solid #ffcc02;
-            margin: 10px auto;
+            background-color: #fff8e1;
+            border: 1px solid #ffe0b2;
+            margin: 20px auto;
             text-align: center;
-            font-style: italic;
+            max-width: 90%;
+            font-size: 14px;
             color: #e65100;
-            font-weight: bold;
         }
         
         .message.system.session-closed {
             background-color: #ffebee;
-            border: 2px solid #f44336;
+            border: 1px solid #ffcdd2;
             color: #c62828;
-            font-size: 16px;
             padding: 15px;
         }
         
@@ -141,12 +171,20 @@
             font-size: 11px;
             opacity: 0.7;
             margin-top: 5px;
+            text-align: right;
+        }
+        
+        .support-name {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+            font-size: 14px;
         }
         
         .message-input-container {
             padding: 20px;
-            border-top: 1px solid #ddd;
-            background-color: #f8f9fa;
+            border-top: 1px solid rgba(0,0,0,0.05);
+            background-color: white;
         }
         
         .customer-info {
@@ -158,17 +196,19 @@
         .customer-info select,
         .customer-info input {
             width: 100%;
-            padding: 12px;
+            padding: 12px 15px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 6px;
             box-sizing: border-box;
             font-size: 14px;
+            transition: border 0.3s;
         }
         
         .customer-info select:focus,
         .customer-info input:focus {
             outline: none;
-            border-color: #2196f3;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
         }
         
         .message-input {
@@ -178,74 +218,107 @@
         
         .message-input input {
             flex: 1;
-            padding: 12px;
+            padding: 12px 15px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 14px;
+            transition: border 0.3s;
         }
         
         .message-input input:focus {
             outline: none;
-            border-color: #2196f3;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
         }
         
         .btn {
             padding: 12px 20px;
-            background-color: #2196f3;
+            background-color: var(--secondary-color);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
-            font-weight: normal;
+            font-weight: 500;
+            transition: background-color 0.3s;
         }
         
         .btn:hover {
-            background-color: #1976d2;
+            background-color: #2980b9;
         }
         
         .btn:disabled {
-            background-color: #ccc;
+            background-color: #bdc3c7;
             cursor: not-allowed;
         }
         
         .btn-primary {
             width: 100%;
             font-size: 16px;
+            padding: 14px;
         }
         
         .typing-indicator {
             padding: 10px 20px;
             font-style: italic;
-            color: #666;
+            color: var(--text-light);
             font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--text-light);
+            border-radius: 50%;
+            margin-right: 4px;
+            animation: typingAnimation 1.4s infinite ease-in-out;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
         }
         
         .error-message {
-            color: #f44336;
+            color: var(--danger-color);
             font-size: 12px;
             margin-top: 5px;
+            display: block;
+        }
+        
+        @keyframes typingAnimation {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         @media (max-width: 640px) {
-            body {
-                padding: 10px;
-            }
-            
             .chat-container {
-                height: calc(100vh - 20px);
+                height: 100vh;
+                margin: 0;
+                border-radius: 0;
             }
             
-            .chat-header,
-            .message-input-container {
+            .chat-header {
                 padding: 15px;
             }
             
-            .chat-messages {
-                padding: 15px;
+            .message {
+                max-width: 85%;
             }
         }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
     <div class="chat-container">
@@ -255,7 +328,7 @@
         </div>
         
         <div id="connectionStatus" class="connection-status disconnected">
-            Not connected
+            <i class="fas fa-circle"></i> Not connected
         </div>
         
         <div id="chatStatus" class="chat-status">
@@ -265,7 +338,7 @@
         <div class="chat-messages" id="chatMessages">
             <div class="welcome-message">
                 <h3>Welcome to Customer Support!</h3>
-                <p>Please select a shop location, enter your name and email to get started with our support team.</p>
+                <p>Please select a shop location, enter your name and email to get started with our support team. Our average response time is under 5 minutes.</p>
             </div>
         </div>
         
@@ -281,7 +354,9 @@
             
             <div id="messageInput" class="message-input" style="display: none;">
                 <input type="text" id="messageText" placeholder="Type your message..." disabled>
-                <button id="sendMessage" class="btn" disabled>Send</button>
+                <button id="sendMessage" class="btn" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -293,6 +368,8 @@
         let isConnected = false;
         let currentSessionId = null;
         let hasConnectedToAgent = false;
+        let supportAgentName = 'Support Agent';
+        let typingTimeout = null;
 
         // DOM elements
         const connectionStatus = document.getElementById('connectionStatus');
@@ -355,7 +432,7 @@
             }
             
             if (!name || name.length < 2) {
-                showError('customerName', 'Please enter your full name');
+                showError('customerName', 'Please enter your full name (at least 2 characters)');
                 return;
             }
             
@@ -365,13 +442,13 @@
             }
             
             // Show loading state
-            startButton.textContent = 'Connecting...';
+            startButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
             startButton.disabled = true;
             
             try {
                 customerName = name;
                 customerEmail = email;
-                hasConnectedToAgent = false; // Reset agent connection flag for new session
+                hasConnectedToAgent = false;
                 
                 // Hide customer info form and show message input
                 customerInfo.style.display = 'none';
@@ -391,7 +468,7 @@
                 // Reset form
                 customerInfo.style.display = 'flex';
                 messageInput.style.display = 'none';
-                startButton.textContent = 'Start Chat';
+                startButton.innerHTML = 'Start Chat';
                 startButton.disabled = false;
             }
         });
@@ -399,13 +476,19 @@
         // Show validation error
         function showError(fieldId, message) {
             const field = document.getElementById(fieldId);
-            field.style.borderColor = '#f44336';
+            field.style.borderColor = 'var(--danger-color)';
             
-            const errorDiv = document.createElement('div');
+            const errorDiv = document.createElement('span');
             errorDiv.className = 'error-message';
             errorDiv.textContent = message;
             
-            field.parentNode.insertBefore(errorDiv, field.nextSibling);
+            // Remove existing error if any
+            const existingError = field.nextElementSibling;
+            if (existingError && existingError.classList.contains('error-message')) {
+                existingError.remove();
+            }
+            
+            field.insertAdjacentElement('afterend', errorDiv);
             field.focus();
         }
 
@@ -429,28 +512,48 @@
                 messageText.disabled = false;
                 sendButton.disabled = false;
                 messageText.focus();
+                
+                // If we have a session ID, establish the session mapping
+                if (currentSessionId) {
+                    websocket.send(JSON.stringify({
+                        type: 'session_connect',
+                        session_id: currentSessionId
+                    }));
+                }
             };
             
             websocket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 
                 if (data.type === 'message') {
-                    addMessageToChat(data.message, 'support', data.timestamp);
-                    
-                    // If this is the first message from support, show connection message
+                    // Check if this is the first message from support
                     if (data.from === 'support' && !hasConnectedToAgent) {
                         hasConnectedToAgent = true;
-                        addMessageToChat('A support agent has joined the chat and will assist you.', 'system');
-                        updateChatStatus('Connected with support agent');
+                        supportAgentName = data.agent_name || 'Support Agent';
+                        updateChatStatus(`Connected with ${supportAgentName}`);
                     }
+                    
+                    // Add the message to chat
+                    addMessageToChat(data.message, data.from === 'support' ? 'support' : 'customer', data.timestamp, data.agent_name);
+                    
                 } else if (data.type === 'agent_assigned') {
                     // Show when an agent is assigned to the session
                     hasConnectedToAgent = true;
-                    addMessageToChat('A support agent has been assigned to help you. They will respond shortly.', 'system');
-                    updateChatStatus('Support agent assigned - waiting for response');
+                    supportAgentName = data.agent_name || 'Support Agent';
+                    addMessageToChat(`${supportAgentName} has been assigned to help you. They will respond shortly.`, 'system');
+                    updateChatStatus(`Support agent assigned - waiting for response from ${supportAgentName}`);
+                    
+                } else if (data.type === 'typing') {
+                    // Show typing indicator
+                    showTypingIndicator(true);
+                    
+                } else if (data.type === 'stop_typing') {
+                    // Hide typing indicator
+                    showTypingIndicator(false);
+                    
                 } else if (data.type === 'session_closed') {
                     // Display prominent termination message
-                    addMessageToChat('🔒 This support session has been closed by the agent.', 'system');
+                    addMessageToChat('🔒 This support session has been closed by the agent.', 'system session-closed');
                     addMessageToChat(data.message || 'Thank you for contacting us! If you need further assistance, please start a new chat session.', 'system');
                     updateChatStatus('Session ended - Chat closed');
                     
@@ -489,40 +592,71 @@
             };
         }
 
+        // Show/hide typing indicator
+        function showTypingIndicator(show) {
+            let typingIndicator = document.getElementById('typingIndicator');
+            
+            if (show) {
+                if (!typingIndicator) {
+                    typingIndicator = document.createElement('div');
+                    typingIndicator.id = 'typingIndicator';
+                    typingIndicator.className = 'typing-indicator';
+                    typingIndicator.innerHTML = `
+                        ${supportAgentName} is typing <span></span><span></span><span></span>
+                    `;
+                    chatMessages.appendChild(typingIndicator);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+                
+                // Clear any existing timeout
+                if (typingTimeout) clearTimeout(typingTimeout);
+                
+                // Hide after 3 seconds if no more typing events
+                typingTimeout = setTimeout(() => {
+                    showTypingIndicator(false);
+                }, 3000);
+            } else if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+
         // Create chat session
         async function createChatSession(shopId) {
             try {
                 const response = await fetch(`/chat/sessions/?customer_email=${encodeURIComponent(customerEmail)}&shop_id=${shopId}`, {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        customer_name: customerName
+                    })
                 });
                 
                 if (response.ok) {
                     const session = await response.json();
-                    currentSessionId = session.id;  // Store session ID
+                    currentSessionId = session.id;
                     updateChatStatus('Chat session created. Waiting for support agent...');
+                    
+                    // Add initial customer message
+                    addMessageToChat('Hello! I need assistance.', 'customer', new Date().toISOString());
+                    
                 } else {
-                    updateChatStatus('Failed to create chat session. Please try again.');
+                    throw new Error('Failed to create session');
                 }
             } catch (error) {
                 console.error('Error creating chat session:', error);
-                updateChatStatus('Error creating chat session. Please try again.');
+                throw error;
             }
         }
 
         // Update connection status
         function updateConnectionStatus(status) {
             connectionStatus.className = `connection-status ${status}`;
-            switch (status) {
-                case 'connected':
-                    connectionStatus.textContent = 'Connected';
-                    break;
-                case 'disconnected':
-                    connectionStatus.textContent = 'Disconnected';
-                    break;
-                case 'waiting':
-                    connectionStatus.textContent = 'Connecting...';
-                    break;
-            }
+            const icon = status === 'connected' ? 'fa-check-circle' : 
+                         status === 'disconnected' ? 'fa-times-circle' : 'fa-sync-alt fa-spin';
+            
+            connectionStatus.innerHTML = `<i class="fas ${icon}"></i> ${status.charAt(0).toUpperCase() + status.slice(1)}`;
         }
 
         // Update chat status
@@ -531,13 +665,21 @@
         }
 
         // Add message to chat
-        function addMessageToChat(message, sender, timestamp) {
+        function addMessageToChat(message, sender, timestamp, agentName = null) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${sender}`;
             
             // Add special styling for session closed messages
             if (sender === 'system' && message.includes('🔒')) {
                 messageDiv.classList.add('session-closed');
+            }
+            
+            // Add support agent name if available
+            if (sender === 'support' && agentName) {
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'support-name';
+                nameDiv.textContent = agentName;
+                messageDiv.appendChild(nameDiv);
             }
             
             const messageContent = document.createElement('div');
@@ -547,7 +689,7 @@
             if (timestamp) {
                 const timestampDiv = document.createElement('div');
                 timestampDiv.className = 'message-timestamp';
-                timestampDiv.textContent = new Date(timestamp).toLocaleTimeString();
+                timestampDiv.textContent = formatTimestamp(timestamp);
                 messageDiv.appendChild(timestampDiv);
             }
             
@@ -555,20 +697,43 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
+        // Format timestamp
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
         // Send message
         function sendMessage() {
             const message = messageText.value.trim();
             
             if (message && websocket && isConnected && currentSessionId) {
+                // Send typing stop event
+                websocket.send(JSON.stringify({
+                    type: 'stop_typing',
+                    session_id: currentSessionId
+                }));
+                
+                // Send the actual message
                 websocket.send(JSON.stringify({
                     type: 'chat_message',
                     message: message,
-                    session_id: currentSessionId,  // Include session ID
+                    session_id: currentSessionId,
                     timestamp: new Date().toISOString()
                 }));
                 
                 addMessageToChat(message, 'customer', new Date().toISOString());
                 messageText.value = '';
+            }
+        }
+
+        // Handle typing events
+        function handleTyping() {
+            if (websocket && isConnected && currentSessionId) {
+                websocket.send(JSON.stringify({
+                    type: 'typing',
+                    session_id: currentSessionId
+                }));
             }
         }
 
@@ -579,6 +744,10 @@
                 e.preventDefault();
                 sendMessage();
             }
+        });
+        
+        document.getElementById('messageText').addEventListener('input', () => {
+            handleTyping();
         });
 
         // Load shops when page loads

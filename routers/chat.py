@@ -235,6 +235,8 @@ async def websocket_employee(websocket: WebSocket, employee_id: int):
                 db = next(get_db())
                 session = crud.get_chat_session(db, message_data["session_id"])
                 if session and session.customer:
+                    print(f"Sending message from employee {employee_id} to session {session.id}")
+                    print(f"Session connections: {list(manager.session_connections.keys())}")
                     # Send message to customer via session
                     await manager.send_to_session(
                         json.dumps({
@@ -245,7 +247,9 @@ async def websocket_employee(websocket: WebSocket, employee_id: int):
                         }),
                         session.id
                     )
-                
+                    print(f"Message sent to session {session.id}")
+                else:
+                    print(f"Session {message_data['session_id']} not found or has no customer")
                 db.close()
                 
     except WebSocketDisconnect:
@@ -261,7 +265,15 @@ async def websocket_customer(websocket: WebSocket, customer_email: str):
             data = await websocket.receive_text()
             message_data = json.loads(data)
             
-            if message_data["type"] == "chat_message":
+            if message_data["type"] == "session_connect":
+                # Handle session connection to establish mapping
+                session_id = message_data.get("session_id")
+                if session_id:
+                    current_session_id = session_id
+                    manager.session_connections[session_id] = websocket
+                    print(f"Session {session_id} mapped to customer WebSocket for {customer_email}")
+                    
+            elif message_data["type"] == "chat_message":
                 # Save message to database
                 db = next(get_db())
                 
