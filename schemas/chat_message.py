@@ -9,6 +9,9 @@ class ChatMessageCreate(ChatMessageBase):
     session_id: int
     is_from_customer: bool = False
 
+class ChatMessageUpdate(BaseModel):
+    message: Optional[str] = None
+
 class ChatMessage(ChatMessageBase):
     id: int
     session_id: int
@@ -18,4 +21,3 @@ class ChatMessage(ChatMessageBase):
     
     class Config:
         from_attributes = True
-        

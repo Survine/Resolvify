@@ -8,6 +8,10 @@ class CustomerBase(BaseModel):
 class CustomerCreate(CustomerBase):
     pass
 
+class CustomerUpdate(BaseModel):
+    name: str = None
+    email: EmailStr = None
+
 class Customer(CustomerBase):
     id: int
     created_at: datetime

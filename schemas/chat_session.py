@@ -9,6 +9,10 @@ class ChatSessionBase(BaseModel):
 class ChatSessionCreate(ChatSessionBase):
     customer_id: int
 
+class ChatSessionUpdate(BaseModel):
+    employee_id: Optional[int] = None
+    status: Optional[str] = None
+
 class ChatSession(ChatSessionBase):
     id: int
     customer_id: int

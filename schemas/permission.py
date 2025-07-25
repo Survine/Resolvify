@@ -11,6 +11,12 @@ class PermissionBase(BaseModel):
 class PermissionCreate(PermissionBase):
     pass
 
+class PermissionUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    resource: Optional[str] = None
+    action: Optional[str] = None
+
 class Permission(PermissionBase):
     id: int
     created_at: datetime

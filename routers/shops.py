@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import schemas
-
+import crud
 from permissions import shop_read, shop_create, shop_update, shop_delete
 from databases.database import get_db
 
@@ -20,11 +20,10 @@ def create_shop(
 def read_shops(
     skip: int = 0,
     limit: int = 100,
-    company_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_employee = Depends(shop_read)
 ):
-    return crud.get_shops(db, skip=skip, limit=limit, company_id=company_id)
+    return crud.get_shops(db, skip=skip, limit=limit)
 
 @router.get("/{shop_id}", response_model=schemas.Shop)
 def read_shop(

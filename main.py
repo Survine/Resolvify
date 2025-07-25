@@ -1,11 +1,11 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from auth import auth_router
+from auth.auth_router import router as auth_router
 from routers import shops, employees, teams, roles, chat, customers, permissions
 from databases.database import engine, get_db
 from permissions import create_default_permissions, create_default_roles
-from models import association_tables, chat_message, chat_session, employee, role, shop, team
+import models
 
 app = FastAPI(
     title="Customer Support Management System",
@@ -16,7 +16,7 @@ app = FastAPI(
 templates = Jinja2Templates(directory="templates")
 
 # Register routers
-app.include_router(auth_router.router)
+app.include_router(auth_router)
 app.include_router(shops.router)
 app.include_router(employees.router)
 app.include_router(teams.router)

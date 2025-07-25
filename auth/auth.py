@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from decouple import config
 import models
-import schemas
+from auth.auth_schema import TokenData
 from databases.database import get_db
 
 SECRET_KEY = config("SECRET_KEY")
@@ -55,7 +55,7 @@ async def get_current_employee(token: str = Depends(oauth2_scheme), db: Session 
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-        token_data = schemas.TokenData(username=username)
+        token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
     

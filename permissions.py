@@ -40,11 +40,6 @@ def require_permission(resource: str, action: str):
     return PermissionChecker(resource, action)
 
 # Specific permission checkers for common operations
-company_read = PermissionChecker("company", "read")
-company_create = PermissionChecker("company", "create")
-company_update = PermissionChecker("company", "update")
-company_delete = PermissionChecker("company", "delete")
-
 shop_read = PermissionChecker("shop", "read")
 shop_create = PermissionChecker("shop", "create")
 shop_update = PermissionChecker("shop", "update")
@@ -70,9 +65,14 @@ chat_create = PermissionChecker("chat", "create")
 chat_update = PermissionChecker("chat", "update")
 chat_delete = PermissionChecker("chat", "delete")
 
+customer_read = PermissionChecker("customer", "read")
+customer_create = PermissionChecker("customer", "create")
+customer_update = PermissionChecker("customer", "update")
+customer_delete = PermissionChecker("customer", "delete")
+
 def create_default_permissions(db: Session):
     """Create default permissions for the system"""
-    resources = ["company", "shop", "employee", "team", "role", "chat", "permission"]
+    resources = ["shop", "employee", "team", "role", "chat", "permission", "customer"]
     actions = ["create", "read", "update", "delete"]
     
     for resource in resources:
@@ -123,10 +123,11 @@ def create_default_roles(db: Session):
         # Assign specific permissions to manager
         manager_permissions = db.query(models.Permission).filter(
             models.Permission.name.in_([
-                "read_company", "read_shop", "update_shop",
+                "read_shop", "update_shop",
                 "create_employee", "read_employee", "update_employee",
                 "create_team", "read_team", "update_team", "delete_team",
-                "create_chat", "read_chat", "update_chat"
+                "create_chat", "read_chat", "update_chat",
+                "read_customer"
             ])
         ).all()
         manager_role.permissions = manager_permissions
@@ -146,7 +147,8 @@ def create_default_roles(db: Session):
         support_permissions = db.query(models.Permission).filter(
             models.Permission.name.in_([
                 "read_employee", "read_team", "read_shop",
-                "create_chat", "read_chat", "update_chat"
+                "create_chat", "read_chat", "update_chat",
+                "read_customer", "create_customer"
             ])
         ).all()
         support_role.permissions = support_permissions

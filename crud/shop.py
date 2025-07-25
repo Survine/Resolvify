@@ -14,11 +14,8 @@ def create_shop(db: Session, shop: schemas.ShopCreate) -> models.Shop:
 def get_shop(db: Session, shop_id: int) -> Optional[models.Shop]:
     return db.query(models.Shop).filter(models.Shop.id == shop_id).first()
 
-def get_shops(db: Session, skip: int = 0, limit: int = 100, company_id: Optional[int] = None) -> List[models.Shop]:
-    query = db.query(models.Shop)
-    if company_id:
-        query = query.filter(models.Shop.company_id == company_id)
-    return query.offset(skip).limit(limit).all()
+def get_shops(db: Session, skip: int = 0, limit: int = 100) -> List[models.Shop]:
+    return db.query(models.Shop).offset(skip).limit(limit).all()
 
 def update_shop(db: Session, shop_id: int, shop: schemas.ShopUpdate) -> Optional[models.Shop]:
     db_shop = get_shop(db, shop_id)

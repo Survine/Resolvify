@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import schemas
-
+import crud
 from permissions import team_read, team_create, team_update, team_delete
 from databases.database import get_db
 

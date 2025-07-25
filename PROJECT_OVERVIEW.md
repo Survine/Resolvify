@@ -6,8 +6,8 @@ This is a comprehensive FastAPI-based customer support management system with th
 
 ### 🌟 Key Features
 
-1. **Multi-Company Architecture**
-   - Companies can have multiple shops
+1. **Multi-Shop Architecture**
+   - Multiple shops with independent management
    - Each shop can have multiple employees
    - Employees are organized into teams
 
@@ -48,11 +48,12 @@ d:\Yupcha v4\
 ├── setup.ps1               # PowerShell setup script
 ├── routers/                # API route handlers
 │   ├── auth.py             # Authentication endpoints
-│   ├── companies.py        # Company management
 │   ├── shops.py            # Shop management
 │   ├── employees.py        # Employee management
 │   ├── teams.py            # Team management
 │   ├── roles.py            # Role and permission management
+│   ├── customers.py        # Customer management
+│   ├── permissions.py      # Permission management
 │   └── chat.py             # WebSocket chat functionality
 └── templates/              # HTML templates
     ├── support.html        # Employee support dashboard
@@ -63,19 +64,17 @@ d:\Yupcha v4\
 
 ### Core Entities
 
-1. **Company** - Top-level organization
-2. **Shop** - Physical locations within a company
-3. **Employee** - Users with roles and permissions
-4. **Team** - Groups of employees within shops
-5. **Role** - Permission templates (Admin, Manager, Support Agent)
-6. **Permission** - Granular access rights
-7. **Customer** - External users seeking support
-8. **ChatSession** - Support conversation instances
-9. **ChatMessage** - Individual messages in conversations
+1. **Shop** - Physical locations for business operations
+2. **Employee** - Users with roles and permissions
+3. **Team** - Groups of employees within shops
+4. **Role** - Permission templates (Admin, Manager, Support Agent)
+5. **Permission** - Granular access rights
+6. **Customer** - External users seeking support
+7. **ChatSession** - Support conversation instances
+8. **ChatMessage** - Individual messages in conversations
 
 ### Relationships
 
-- Company → Shops (One-to-Many)
 - Shop → Employees (One-to-Many)
 - Shop → Teams (One-to-Many)
 - Employee → Role (Many-to-One)
@@ -155,11 +154,11 @@ response = requests.post("http://localhost:8000/auth/token",
                         data={"username": "admin", "password": "admin123"})
 token = response.json()["access_token"]
 
-# Create Company
+# Create Shop
 headers = {"Authorization": f"Bearer {token}"}
-company_data = {"name": "New Company", "description": "A new company"}
-requests.post("http://localhost:8000/companies/", 
-              json=company_data, headers=headers)
+shop_data = {"name": "New Shop", "location": "123 Main St"}
+requests.post("http://localhost:8000/shops/", 
+              json=shop_data, headers=headers)
 ```
 
 ## 🔧 Customization

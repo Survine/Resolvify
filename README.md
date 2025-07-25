@@ -4,7 +4,7 @@ A FastAPI-based customer support management system with role-based permissions, 
 
 ## Features
 
-- **Company Management**: Multiple companies with multiple shops
+- **Shop Management**: Multiple shops with independent management
 - **Employee Management**: Employees organized in teams within shops
 - **Role-Based Access Control**: Granular permissions for different roles
 - **Real-time Chat**: WebSocket-based customer support chat system
@@ -44,11 +44,12 @@ uvicorn main:app --reload
 
 - `/docs` - Interactive API documentation
 - `/auth/` - Authentication endpoints
-- `/companies/` - Company management
 - `/shops/` - Shop management
 - `/employees/` - Employee management
 - `/teams/` - Team management
 - `/roles/` - Role and permission management
+- `/customers/` - Customer management
+- `/permissions/` - Permission management
 - `/chat/` - Chat endpoints
 - `/support` - Employee support interface
 - `/customer` - Customer chat interface

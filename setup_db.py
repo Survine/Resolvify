@@ -7,7 +7,7 @@ import asyncio
 from sqlalchemy.orm import Session
 from databases.database import SessionLocal, engine
 import models
-
+import crud
 import schemas
 from permissions import create_default_permissions, create_default_roles
 from auth.auth import get_password_hash
@@ -26,25 +26,16 @@ def init_db():
         create_default_permissions(db)
         create_default_roles(db)
         
-        # Create sample company
-        print("Creating sample company...")
-        company = crud.create_company(db, schemas.CompanyCreate(
-            name="TechCorp Solutions",
-            description="A leading technology company providing innovative solutions"
-        ))
-        
         # Create sample shops
         print("Creating sample shops...")
         shop1 = crud.create_shop(db, schemas.ShopCreate(
             name="Downtown Branch",
-            location="123 Main St, Downtown",
-            company_id=company.id
+            location="123 Main St, Downtown"
         ))
         
         shop2 = crud.create_shop(db, schemas.ShopCreate(
             name="Mall Branch",
-            location="456 Shopping Mall, Uptown",
-            company_id=company.id
+            location="456 Shopping Mall, Uptown"
         ))
         
         # Get roles
