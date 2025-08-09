@@ -2,7 +2,11 @@ from typing import List, Dict
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 import json
+import redis
 import asyncio
+from decouple import config
+from concurrent.futures import ThreadPoolExecutor
+import threading
 from datetime import datetime
 import schemas
 import crud
@@ -11,16 +15,130 @@ from permissions import chat_read, chat_create, chat_update
 from databases.database import get_db
 from auth.auth import get_current_active_employee
 
+
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-# Store active WebSocket connections
+
+# Redis-enabled ConnectionManager
 class ConnectionManager:
     def __init__(self):
+        # Local connections
         self.active_connections: Dict[str, WebSocket] = {}
         self.employee_connections: Dict[int, WebSocket] = {}
-        self.employee_shop_mapping: Dict[int, int] = {}  # employee_id -> shop_id
-        self.customer_connections: Dict[str, WebSocket] = {}  # customer_email -> websocket
-        self.session_connections: Dict[int, WebSocket] = {}  # session_id -> customer websocket
+        self.employee_shop_mapping: Dict[int, int] = {}
+        self.customer_connections: Dict[str, WebSocket] = {}
+        self.session_connections: Dict[int, WebSocket] = {}
+        
+        # Redis setup with environment variables
+        redis_host = config('REDIS_HOST', default='localhost')
+        redis_port = config('REDIS_PORT', default=6379, cast=int)
+        redis_db = config('REDIS_DB', default=0, cast=int)
+        
+        self.redis_client = redis.Redis(
+            host=redis_host, 
+            port=redis_port, 
+            db=redis_db,
+            decode_responses=True
+        )
+        self.pubsub = self.redis_client.pubsub()
+        
+        # Subscribe to Redis channels
+        self.pubsub.subscribe(['chat_messages', 'session_notifications', 'employee_notifications'])
+          # Test Redis connection
+        try:
+            self.redis_client.ping()
+            print(f"✅ Redis connected successfully at {redis_host}:{redis_port}")
+        except Exception as e:
+            print(f"❌ Redis connection failed: {e}")
+            print("Multi-worker support will not function properly without Redis")
+        
+        # Start Redis listener
+        self.start_redis_listener()
+
+    def start_redis_listener(self):
+        """Start Redis listener in background thread with proper event loop"""
+        def redis_listener():
+            # Create new event loop for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            self.redis_loop = loop
+            
+            try:
+                for message in self.pubsub.listen():
+                    if message['type'] == 'message':
+                        print(f"📨 Redis message received on channel: {message['channel']}")
+                        # Run the coroutine in the thread's event loop
+                        loop.run_until_complete(self.handle_redis_message(message))
+            except Exception as e:
+                print(f"Redis listener error: {e}")
+            finally:
+                loop.close()
+            
+        self.redis_thread = threading.Thread(target=redis_listener, daemon=True)
+        self.redis_thread.start()
+    
+    def shutdown_redis_listener(self):
+        """Shutdown Redis listener gracefully"""
+        self._redis_running = False
+        if self.pubsub:
+            self.pubsub.close()
+        if self.redis_client:
+            self.redis_client.close()
+
+    async def handle_redis_message(self, message):
+        """Handle messages received from Redis"""
+        try:
+            channel = message['channel']
+            data = json.loads(message['data'])
+            print(f"🔄 Processing Redis message from channel '{channel}': {data}")
+            
+            if channel == 'chat_messages':
+                await self.handle_chat_message_from_redis(data)
+            elif channel == 'session_notifications':
+                await self.handle_session_notification_from_redis(data)
+            elif channel == 'employee_notifications':
+                await self.handle_employee_notification_from_redis(data)
+                
+        except Exception as e:
+            print(f"Error handling Redis message: {e}")
+            import traceback
+            traceback.print_exc()
+
+    async def handle_chat_message_from_redis(self, data):
+        """Handle chat messages from Redis"""
+        message_type = data.get('target_type')
+        target_id = data.get('target_id')
+        message_content = data.get('message')
+        
+        print(f"📬 Attempting to deliver message: type={message_type}, target={target_id}")
+        print(f"   Available employee connections: {list(self.employee_connections.keys())}")
+        print(f"   Available customer connections: {list(self.customer_connections.keys())}")
+        print(f"   Available session connections: {list(self.session_connections.keys())}")
+        
+        if message_type == 'employee' and target_id in self.employee_connections:
+            print(f"✅ Sending to employee {target_id}")
+            await self.employee_connections[target_id].send_text(message_content)
+        elif message_type == 'customer' and target_id in self.customer_connections:
+            print(f"✅ Sending to customer {target_id}")
+            await self.customer_connections[target_id].send_text(message_content)
+        elif message_type == 'session' and target_id in self.session_connections:
+            print(f"✅ Delivering message to session {target_id} locally")
+            await self.session_connections[target_id].send_text(message_content)
+        else:
+            print(f"❌ No matching connection found for {message_type}:{target_id}")
+
+    async def handle_session_notification_from_redis(self, data):
+        """Handle session notifications from Redis"""
+        notification_type = data.get('notification_type')
+        shop_id = data.get('shop_id')
+        message_content = data.get('message')
+        
+        if notification_type == 'broadcast_to_shop':
+            await self._local_broadcast_to_shop_employees(message_content, shop_id)
+
+    async def handle_employee_notification_from_redis(self, data):
+        """Handle employee notifications from Redis"""
+        await self._local_broadcast_to_employees(data.get('message', ''))
 
     async def connect_employee(self, websocket: WebSocket, employee_id: int, shop_id: int):
         await websocket.accept()
@@ -32,6 +150,7 @@ class ConnectionManager:
         self.customer_connections[customer_email] = websocket
         if session_id:
             self.session_connections[session_id] = websocket
+            print(f"🔗 Session {session_id} immediately mapped to customer WebSocket for {customer_email}")
 
     def disconnect_employee(self, employee_id: int):
         if employee_id in self.employee_connections:
@@ -49,40 +168,76 @@ class ConnectionManager:
         await websocket.send_text(message)
 
     async def send_to_employee(self, message: str, employee_id: int):
-        if employee_id in self.employee_connections:
-            await self.employee_connections[employee_id].send_text(message)
+        """Send message to employee via Redis (all workers will attempt delivery)"""
+        redis_message = {
+            'target_type': 'employee',
+            'target_id': employee_id,
+            'message': message
+        }
+        self.redis_client.publish('chat_messages', json.dumps(redis_message))
 
     async def send_to_customer(self, message: str, customer_email: str):
-        if customer_email in self.customer_connections:
-            await self.customer_connections[customer_email].send_text(message)
+        """Send message to customer via Redis"""
+        redis_message = {
+            'target_type': 'customer',
+            'target_id': customer_email,
+            'message': message
+        }
+        self.redis_client.publish('chat_messages', json.dumps(redis_message))
     
     async def send_to_session(self, message: str, session_id: int):
-        """Send message to customer via session ID"""
-        print(f"send_to_session called for session {session_id}")
-        print(f"Available session connections: {list(self.session_connections.keys())}")
-        if session_id in self.session_connections:
-            print(f"Sending message to session {session_id}")
-            await self.session_connections[session_id].send_text(message)
-        else:
-            print(f"Session {session_id} not found in session_connections")
+        """Send message to customer via session ID through Redis"""
+        print(f"Publishing message to Redis for session {session_id}")
+        redis_message = {
+            'target_type': 'session',
+            'target_id': session_id,
+            'message': message
+        }
+        self.redis_client.publish('chat_messages', json.dumps(redis_message))
 
     async def broadcast_to_employees(self, message: str):
+        """Broadcast to all employees via Redis"""
+        redis_message = {
+            'message': message
+        }
+        self.redis_client.publish('employee_notifications', json.dumps(redis_message))
+
+    async def _local_broadcast_to_employees(self, message: str):
+        """Local broadcast to all employees (called by Redis handler)"""
         for connection in self.employee_connections.values():
-            await connection.send_text(message)
+            try:
+                await connection.send_text(message)
+            except:
+                pass
     
     async def broadcast_to_shop_employees(self, message: str, shop_id: int):
-        """Broadcast message only to employees from a specific shop"""
+        """Broadcast message to shop employees via Redis"""
+        redis_message = {
+            'notification_type': 'broadcast_to_shop',
+            'shop_id': shop_id,
+            'message': message
+        }
+        self.redis_client.publish('session_notifications', json.dumps(redis_message))
+
+    async def _local_broadcast_to_shop_employees(self, message: str, shop_id: int):
+        """Local broadcast to shop employees (called by Redis handler)"""
         for employee_id, connection in self.employee_connections.items():
             if self.employee_shop_mapping.get(employee_id) == shop_id:
-                await connection.send_text(message)
+                try:
+                    await connection.send_text(message)
+                except:
+                    self.disconnect_employee(employee_id)
+
 
 manager = ConnectionManager()
 
-# REST API endpoints
+
+# REST API endpoints (remain the same)
 @router.get("/shops/", response_model=List[schemas.Shop])
 def get_available_shops(db: Session = Depends(get_db)):
     """Get list of shops available for customer support"""
     return crud.get_shops(db)
+
 
 @router.post("/sessions/", response_model=schemas.ChatSession)
 async def create_chat_session(
@@ -106,7 +261,12 @@ async def create_chat_session(
     # Create chat session for specific shop
     session = crud.create_chat_session(db, customer.id, shop_id)
     
-    # Notify available employees from that shop about new session
+    # Try to immediately map the session to customer's WebSocket if they're connected
+    if customer_email in manager.customer_connections:
+        manager.session_connections[session.id] = manager.customer_connections[customer_email]
+        print(f"🔗 Immediately mapped new session {session.id} to existing customer WebSocket for {customer_email}")
+    
+    # Notify available employees from that shop about new session via Redis
     await manager.broadcast_to_shop_employees(
         json.dumps({
             "type": "new_session",
@@ -120,6 +280,7 @@ async def create_chat_session(
     
     return session
 
+
 @router.get("/sessions/waiting", response_model=List[schemas.ChatSession])
 def get_waiting_sessions(
     db: Session = Depends(get_db),
@@ -127,6 +288,7 @@ def get_waiting_sessions(
 ):
     """Get waiting chat sessions for the employee's shop"""
     return crud.get_waiting_chat_sessions_by_shop(db, current_employee.shop_id)
+
 
 @router.get("/sessions/active", response_model=List[schemas.ChatSession])
 def get_active_sessions(
@@ -139,6 +301,7 @@ def get_active_sessions(
         models.ChatSession.status == "active"
     ).all()
 
+
 @router.put("/sessions/{session_id}/assign")
 async def assign_session_to_employee(
     session_id: int,
@@ -149,18 +312,18 @@ async def assign_session_to_employee(
     if not session:
         raise HTTPException(status_code=404, detail="Chat session not found")
     
-    # Notify customer that an agent has been assigned
-    if session_id in manager.session_connections:
-        await manager.send_personal_message(
-            json.dumps({
-                "type": "agent_assigned",
-                "message": f"A support agent has been assigned to help you.",
-                "agent_name": current_employee.username
-            }),
-            manager.session_connections[session_id]
-        )
+    # Notify customer that an agent has been assigned via Redis
+    await manager.send_to_session(
+        json.dumps({
+            "type": "agent_assigned",
+            "message": f"A support agent has been assigned to help you.",
+            "agent_name": current_employee.username
+        }),
+        session_id
+    )
     
     return {"message": "Session assigned successfully"}
+
 
 @router.put("/sessions/{session_id}/close")
 async def close_chat_session(
@@ -172,19 +335,19 @@ async def close_chat_session(
     if not session:
         raise HTTPException(status_code=404, detail="Chat session not found")
     
-    # Notify customer that session is closed
-    if session_id in manager.session_connections:
-        await manager.send_personal_message(
-            json.dumps({
-                "type": "session_closed",
-                "message": "The support session has been ended by the employee. Thank you for contacting us!"
-            }),
-            manager.session_connections[session_id]
-        )
-        # Remove the customer connection
-        manager.session_connections.pop(session_id, None)
+    # Notify customer that session is closed via Redis
+    await manager.send_to_session(
+        json.dumps({
+            "type": "session_closed",
+            "message": "The support session has been ended by the employee. Thank you for contacting us!"
+        }),
+        session_id
+    )
     
-    # Notify employees in the shop about session closure
+    # Remove the customer connection locally
+    manager.session_connections.pop(session_id, None)
+    
+    # Notify employees in the shop about session closure via Redis
     await manager.broadcast_to_shop_employees(
         json.dumps({
             "type": "session_closed",
@@ -195,6 +358,7 @@ async def close_chat_session(
     )
     
     return {"message": "Session closed successfully"}
+
 
 @router.get("/sessions/{session_id}", response_model=schemas.ChatSession)
 def get_chat_session(
@@ -207,7 +371,8 @@ def get_chat_session(
         raise HTTPException(status_code=404, detail="Chat session not found")
     return session
 
-# WebSocket endpoints
+
+# WebSocket endpoints (remain the same, but now use Redis-enabled manager)
 @router.websocket("/ws/employee/{employee_id}")
 async def websocket_employee(websocket: WebSocket, employee_id: int):
     # Get employee's shop_id from database
@@ -238,13 +403,13 @@ async def websocket_employee(websocket: WebSocket, employee_id: int):
                 )
                 
                 # Get customer session for this message
-                db = next(get_db())
                 session = crud.get_chat_session(db, message_data["session_id"])
                 employee_name = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
+                
                 if session and session.customer and employee_name:
-                    print(f"Sending message from employee {employee_id} to session {session.id}")
-                    print(f"Session connections: {list(manager.session_connections.keys())}")
-                    # Send message to customer via session
+                    print(f"Sending message via Redis from employee {employee_id} to session {session.id}")
+                    
+                    # Send message to customer via Redis
                     await manager.send_to_session(
                         json.dumps({
                             "type": "message",
@@ -255,7 +420,6 @@ async def websocket_employee(websocket: WebSocket, employee_id: int):
                         }),
                         session.id
                     )
-                    print(f"Message sent to session {session.id}")
                 else:
                     print(f"Session {message_data['session_id']} not found or has no customer")
                 db.close()
@@ -263,10 +427,30 @@ async def websocket_employee(websocket: WebSocket, employee_id: int):
     except WebSocketDisconnect:
         manager.disconnect_employee(employee_id)
 
+
 @router.websocket("/ws/customer/{customer_email}")
 async def websocket_customer(websocket: WebSocket, customer_email: str):
     await manager.connect_customer(websocket, customer_email)
     current_session_id = None
+    
+    # Try to find and map any active session for this customer immediately
+    try:
+        db = next(get_db())
+        customer = crud.get_customer_by_email(db, customer_email)
+        if customer:
+            # Get the most recent active session for this customer
+            active_session = db.query(models.ChatSession).filter(
+                models.ChatSession.customer_id == customer.id,
+                models.ChatSession.status.in_(["waiting", "active"])
+            ).order_by(models.ChatSession.created_at.desc()).first()
+            
+            if active_session:
+                current_session_id = active_session.id
+                manager.session_connections[active_session.id] = websocket
+                print(f"🔗 Auto-mapped session {active_session.id} to customer WebSocket for {customer_email}")
+        db.close()
+    except Exception as e:
+        print(f"Error auto-mapping session: {e}")
     
     try:
         while True:
@@ -330,7 +514,7 @@ async def websocket_customer(websocket: WebSocket, customer_email: str):
                     )
                 )
                 
-                # Send message to assigned employee if any
+                # Send message to assigned employee if any via Redis
                 if active_session.employee_id:
                     await manager.send_to_employee(
                         json.dumps({
@@ -345,7 +529,7 @@ async def websocket_customer(websocket: WebSocket, customer_email: str):
                         active_session.employee_id
                     )
                 else:
-                    # Notify employees from the same shop about unassigned message
+                    # Notify employees from the same shop about unassigned message via Redis
                     await manager.broadcast_to_shop_employees(
                         json.dumps({
                             "type": "unassigned_message",
