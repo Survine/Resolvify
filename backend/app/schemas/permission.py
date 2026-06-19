@@ -1,0 +1,28 @@
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+
+
+class PermissionBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    resource: str
+    action: str
+
+
+class PermissionCreate(PermissionBase):
+    pass
+
+
+class PermissionUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    resource: Optional[str] = None
+    action: Optional[str] = None
+
+
+class Permission(PermissionBase):
+    id: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

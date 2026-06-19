@@ -1,7 +1,57 @@
+# Environments
 .venv/
+env/
+venv/
+ENV/
+
+# Python
 __pycache__/
 **/__pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Database
 *.db
+*.sqlite3
+
+# Env files
 .env
+.env.local
+.env.*.local
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/build/
+.eslintcache
+.parcel-cache
+.next/
+out/
+.nuxt/
+.expo/
+
+# IDEs & System
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
