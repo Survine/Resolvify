@@ -9,7 +9,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import SessionLocal, engine
 from app import models, schemas, crud
-from app.services.auth import hash_password
 from app.services.permissions import create_default_permissions, create_default_roles
 
 
@@ -27,17 +26,23 @@ def seed():
             print("Database already seeded. Skipping...")
             print("=" * 40)
             print("Login credentials:")
-            print("  admin / admin123")
-            print("  manager1 / manager123")
-            print("  support1 / support123")
-            print("  support2 / support123")
+            print("  admin / admin123 (Hriday Bardhan)")
+            print("  manager1 / manager123 (Priya Verma)")
+            print("  support1 / support123 (Rohan Mehta)")
+            print("  support2 / support123 (Ananya Patel)")
             print("=" * 40)
             return
 
-        # Shops
+        # Indian Shops
         print("Seeding shops...")
-        shop1 = crud.create_shop(db, schemas.ShopCreate(name="Downtown Branch", location="123 Main St, Downtown"))
-        shop2 = crud.create_shop(db, schemas.ShopCreate(name="Mall Branch", location="456 Shopping Mall, Uptown"))
+        shop1 = crud.create_shop(db, schemas.ShopCreate(
+            name="Agartala Main Branch",
+            location="Central Road, Agartala, West Tripura"
+        ))
+        shop2 = crud.create_shop(db, schemas.ShopCreate(
+            name="Udaipur Branch",
+            location="Old Motor Stand, Udaipur, Gomati"
+        ))
 
         # Roles
         admin_role = db.query(models.Role).filter(models.Role.name == "admin").first()
@@ -47,23 +52,23 @@ def seed():
         # Employees
         print("Seeding employees...")
         admin = crud.create_employee(db, schemas.EmployeeCreate(
-            username="admin", email="admin@resolvify.io",
-            first_name="John", last_name="Admin",
+            username="admin", email="hriday.bardhan@resolvify.in",
+            first_name="Hriday", last_name="Bardhan",
             password="admin123", shop_id=shop1.id, role_id=admin_role.id,
         ))
         manager = crud.create_employee(db, schemas.EmployeeCreate(
-            username="manager1", email="manager@resolvify.io",
-            first_name="Jane", last_name="Manager",
+            username="manager1", email="priya.verma@resolvify.in",
+            first_name="Priya", last_name="Verma",
             password="manager123", shop_id=shop1.id, role_id=manager_role.id,
         ))
         support1 = crud.create_employee(db, schemas.EmployeeCreate(
-            username="support1", email="support1@resolvify.io",
-            first_name="Alice", last_name="Support",
+            username="support1", email="rohan.mehta@resolvify.in",
+            first_name="Rohan", last_name="Mehta",
             password="support123", shop_id=shop1.id, role_id=support_role.id,
         ))
         support2 = crud.create_employee(db, schemas.EmployeeCreate(
-            username="support2", email="support2@resolvify.io",
-            first_name="Bob", last_name="Helper",
+            username="support2", email="ananya.patel@resolvify.in",
+            first_name="Ananya", last_name="Patel",
             password="support123", shop_id=shop2.id, role_id=support_role.id,
         ))
 
@@ -77,12 +82,12 @@ def seed():
         crud.update_employee(db, support2.id, schemas.EmployeeUpdate(team_ids=[team3.id]))
         crud.update_employee(db, manager.id, schemas.EmployeeUpdate(team_ids=[team1.id, team2.id, team3.id]))
 
-        # Customers
+        # Indian Customers
         print("Seeding customers...")
-        crud.create_customer(db, schemas.CustomerCreate(name="John Customer", email="customer1@example.com"))
-        crud.create_customer(db, schemas.CustomerCreate(name="Jane Buyer", email="customer2@example.com"))
+        crud.create_customer(db, schemas.CustomerCreate(name="Vikram Malhotra", email="vikram@example.in"))
+        crud.create_customer(db, schemas.CustomerCreate(name="Sneha Reddy", email="sneha@example.in"))
 
-        print("\nDatabase seeded successfully!")
+        print("\nDatabase seeded successfully with Indian shop locations and employee names!")
         print("=" * 40)
         print("Login credentials:")
         print("  admin / admin123")
