@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # 1. FastAPI Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://resolvify_user:resolvify_pass@postgres:5432/resolvify_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SECRET_KEY=dev-secret-key-change-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # 2. PostgreSQL Database Service (Latest Alpine)
+  postgres:
+    image: postgres:alpine
+    restart: always
+    environment:
+      POSTGRES_USER: resolvify_user
+      POSTGRES_PASSWORD: resolvify_pass
+      POSTGRES_DB: resolvify_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resolvify_user -d resolvify_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 3. Redis Service for Real-time WebSockets (Latest Alpine)
+  redis:
+    image: redis:alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
