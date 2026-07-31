@@ -16,6 +16,7 @@ class ConnectionManager:
     def __init__(self):
         self.employee_connections: Dict[int, WebSocket] = {}
         self.employee_shop_mapping: Dict[int, int] = {}
+        self.admin_connections: set = set()
         self.customer_connections: Dict[str, WebSocket] = {}
         self.session_connections: Dict[int, WebSocket] = {}
         self.main_loop = None
@@ -142,18 +143,20 @@ class ConnectionManager:
         for emp_id, ws in list(self.employee_connections.items()):
             if exclude_employee_id is not None and emp_id == exclude_employee_id:
                 continue
-            if self.employee_shop_mapping.get(emp_id) == shop_id:
+            if self.employee_shop_mapping.get(emp_id) == shop_id or emp_id in self.admin_connections:
                 try:
                     await ws.send_text(message)
                 except Exception:
                     self.disconnect_employee(emp_id)
 
     # Connection lifecycle
-    async def connect_employee(self, ws: WebSocket, employee_id: int, shop_id: int):
+    async def connect_employee(self, ws: WebSocket, employee_id: int, shop_id: int, is_admin: bool = False):
         self._ensure_main_loop()
         await ws.accept()
         self.employee_connections[employee_id] = ws
         self.employee_shop_mapping[employee_id] = shop_id
+        if is_admin:
+            self.admin_connections.add(employee_id)
 
     async def connect_customer(self, ws: WebSocket, email: str, session_id: int = None):
         self._ensure_main_loop()
@@ -165,6 +168,7 @@ class ConnectionManager:
     def disconnect_employee(self, employee_id: int):
         self.employee_connections.pop(employee_id, None)
         self.employee_shop_mapping.pop(employee_id, None)
+        self.admin_connections.discard(employee_id)
 
     def disconnect_customer(self, email: str, session_id: int = None):
         self.customer_connections.pop(email, None)

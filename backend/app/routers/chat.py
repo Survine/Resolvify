@@ -72,6 +72,13 @@ def get_waiting_sessions(
     db: Session = Depends(get_db),
     current_employee: models.Employee = Depends(chat_read),
 ):
+    role_name = current_employee.role.name if current_employee.role else None
+    if not role_name and current_employee.role_id:
+        role_obj = db.query(models.Role).filter(models.Role.id == current_employee.role_id).first()
+        role_name = role_obj.name if role_obj else None
+
+    if role_name in ("admin", "manager") or not current_employee.shop_id:
+        return crud.get_waiting_chat_sessions(db)
     return crud.get_waiting_chat_sessions_by_shop(db, current_employee.shop_id)
 
 
@@ -177,9 +184,12 @@ async def ws_employee(websocket: WebSocket, employee_id: int):
     employee = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
     if not employee:
         await websocket.close(code=1008, reason="Employee not found")
+        db.close()
         return
 
-    await manager.connect_employee(websocket, employee_id, employee.shop_id)
+    is_admin = (employee.role and employee.role.name in ("admin", "manager")) if employee else False
+    await manager.connect_employee(websocket, employee_id, employee.shop_id, is_admin=is_admin)
+    db.close()
     try:
         while True:
             data = await websocket.receive_text()

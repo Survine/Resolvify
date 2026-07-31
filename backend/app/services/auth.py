@@ -68,8 +68,11 @@ async def get_current_employee(
     except JWTError:
         raise credentials_exception
 
+    from sqlalchemy.orm import joinedload
+
     employee = (
         db.query(models.Employee)
+        .options(joinedload(models.Employee.role), joinedload(models.Employee.shop))
         .filter(
             models.Employee.username == token_data.username,
             models.Employee.is_active == True,

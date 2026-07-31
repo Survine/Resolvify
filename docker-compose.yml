@@ -6,6 +6,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5174:5174"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:8000
       - VITE_WS_URL=ws://localhost:8000
@@ -19,6 +22,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend:/app
     environment:
       - DATABASE_URL=postgresql://resolvify_user:resolvify_pass@postgres:5432/resolvify_db
       - REDIS_HOST=redis
