@@ -26,12 +26,18 @@ def hash_password(password: str) -> str:
 def authenticate_employee(db: Session, username: str, password: str):
     from app import models
 
+
     employee = (
         db.query(models.Employee)
         .filter(models.Employee.username == username, models.Employee.is_active == True)
         .first()
     )
-    if not employee or not verify_password(password, employee.hashed_password):
+
+    if not employee:
+        return None
+    val = verify_password(password, employee.hashed_password)
+
+    if not val:
         return None
     return employee
 

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from './useAuth'
 
 export function useTheme() {
   const [dark, setDark] = useState(() => {

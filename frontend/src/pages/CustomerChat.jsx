@@ -8,7 +8,7 @@ import Badge from '../components/ui/Badge'
 import MessageBubble from '../components/chat/MessageBubble'
 import MessageInput from '../components/chat/MessageInput'
 import TypingIndicator from '../components/chat/TypingIndicator'
-import { MessageSquare, Sun, Moon, Link, AlertCircle } from 'lucide-react'
+import { MessageSquare, Sun, Moon, AlertCircle } from 'lucide-react'
 
 export default function CustomerChat() {
   const { dark, toggle } = useTheme()

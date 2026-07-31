@@ -21,6 +21,19 @@ def seed():
         create_default_permissions(db)
         create_default_roles(db)
 
+        # Check if already seeded
+        existing_shops = crud.get_shops(db)
+        if existing_shops:
+            print("Database already seeded. Skipping...")
+            print("=" * 40)
+            print("Login credentials:")
+            print("  admin / admin123")
+            print("  manager1 / manager123")
+            print("  support1 / support123")
+            print("  support2 / support123")
+            print("=" * 40)
+            return
+
         # Shops
         print("Seeding shops...")
         shop1 = crud.create_shop(db, schemas.ShopCreate(name="Downtown Branch", location="123 Main St, Downtown"))
