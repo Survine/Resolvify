@@ -134,12 +134,22 @@ async def close_session(
 def get_session(
     session_id: int,
     db: Session = Depends(get_db),
-    _=Depends(chat_read),
 ):
     session = crud.get_chat_session(db, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Chat session not found")
     return session
+
+
+@router.get("/sessions/{session_id}/messages", response_model=List[schemas.ChatMessage])
+def get_session_messages(
+    session_id: int,
+    db: Session = Depends(get_db),
+):
+    session = crud.get_chat_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+    return crud.get_session_messages(db, session_id)
 
 
 @router.websocket("/ws/employee/{employee_id}")

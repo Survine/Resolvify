@@ -10,6 +10,8 @@ import MessageInput from '../components/chat/MessageInput'
 import TypingIndicator from '../components/chat/TypingIndicator'
 import { MessageSquare, Sun, Moon, AlertCircle } from 'lucide-react'
 
+const SESSION_STORAGE_KEY = 'resolvify_customer_session'
+
 export default function CustomerChat() {
   const { dark, toggle } = useTheme()
   const [shops, setShops] = useState([])
@@ -30,11 +32,60 @@ export default function CustomerChat() {
   const chatContainerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
 
+  // 1. Fetch available shops
   useEffect(() => {
     api.get('/chat/shops/')
       .then((res) => setShops(res.data))
       .catch((err) => console.error('Error fetching shops:', err))
       .finally(() => setLoadingShops(false))
+  }, [])
+
+  // 2. Restore persistent customer session on refresh
+  useEffect(() => {
+    const saved = localStorage.getItem(SESSION_STORAGE_KEY)
+    if (!saved) return
+
+    try {
+      const parsed = JSON.parse(saved)
+      if (!parsed.session?.id || !parsed.email) return
+
+      // Verify if session is still active on backend
+      api.get(`/chat/sessions/${parsed.session.id}`)
+        .then(async (res) => {
+          if (res.data.status === 'closed') {
+            localStorage.removeItem(SESSION_STORAGE_KEY)
+            return
+          }
+
+          setSession(res.data)
+          setEmail(parsed.email)
+          setName(parsed.name || '')
+          setSelectedShop(parsed.selectedShop || res.data.shop_id)
+
+          // Fetch message history for restored session
+          try {
+            const msgRes = await api.get(`/chat/sessions/${parsed.session.id}/messages`)
+            if (msgRes.data && msgRes.data.length > 0) {
+              setMessages(
+                msgRes.data.map((m) => ({
+                  id: m.id,
+                  message: m.message,
+                  is_from_customer: m.is_from_customer,
+                  created_at: m.created_at,
+                  employee: m.employee_id ? { first_name: 'Support Agent', last_name: '' } : null,
+                }))
+              )
+            }
+          } catch (mErr) {
+            console.error('Error fetching session messages:', mErr)
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem(SESSION_STORAGE_KEY)
+        })
+    } catch {
+      localStorage.removeItem(SESSION_STORAGE_KEY)
+    }
   }, [])
 
   useEffect(() => {
@@ -43,7 +94,7 @@ export default function CustomerChat() {
     }
   }, [messages, agentTyping])
 
-  // Setup WebSocket connection
+  // 3. WebSocket connection setup
   const { send } = useWebSocket(email ? `/chat/ws/customer/${email}` : null, {
     enabled: !!email && !!session,
     onOpen: () => {
@@ -89,6 +140,7 @@ export default function CustomerChat() {
       } else if (data.type === 'session_closed') {
         setConnected(false)
         setSession(null)
+        localStorage.removeItem(SESSION_STORAGE_KEY)
         setMessages((prev) => [
           ...prev,
           {
@@ -110,10 +162,10 @@ export default function CustomerChat() {
     setError('')
 
     try {
-      // 1. Ensure customer is created
+      // Register/ensure customer exists
       await api.post(`/customers/`, { name, email })
     } catch (err) {
-      if (err.response?.status !== 400) { // status 400 means already registered, which is fine
+      if (err.response?.status !== 400) {
         setError('Failed to register customer details. Please try again.')
         setConnecting(false)
         return
@@ -121,9 +173,18 @@ export default function CustomerChat() {
     }
 
     try {
-      // 2. Create Chat Session
+      // Create Chat Session
       const sessionRes = await api.post(`/chat/sessions/?customer_email=${encodeURIComponent(email)}&shop_id=${selectedShop}`)
-      setSession(sessionRes.data)
+      const newSession = sessionRes.data
+
+      setSession(newSession)
+      
+      // Save session to localStorage for refresh persistence
+      localStorage.setItem(
+        SESSION_STORAGE_KEY,
+        JSON.stringify({ session: newSession, email, name, selectedShop })
+      )
+
       setMessages([
         {
           id: Date.now(),
@@ -248,7 +309,7 @@ export default function CustomerChat() {
           <div className="w-full max-w-2xl h-[80vh] bg-[hsl(var(--surface))] rounded-2xl border border-[hsl(var(--border))] shadow-lg flex flex-col overflow-hidden animate-fade-in">
             {/* Session Info banner */}
             <div className="px-4 py-3 bg-[hsl(var(--bg-tertiary))] border-b border-[hsl(var(--border))] flex items-center justify-between text-xs text-[hsl(var(--text-secondary))] shrink-0">
-              <span>Connected to: <span className="font-semibold text-[hsl(var(--text-primary))]">{shops.find(s => s.id === parseInt(selectedShop))?.name}</span></span>
+              <span>Connected to: <span className="font-semibold text-[hsl(var(--text-primary))]">{shops.find(s => s.id === parseInt(selectedShop))?.name || 'Support'}</span></span>
               <span>Session ID: #{session.id}</span>
             </div>
 
@@ -256,7 +317,7 @@ export default function CustomerChat() {
             <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col bg-[hsl(var(--bg-secondary))]">
               {messages.map((msg) => (
                 <MessageBubble
-                  key={msg.id || msg.timestamp}
+                  key={msg.id || msg.created_at}
                   message={msg}
                   isSelf={msg.is_from_customer}
                 />

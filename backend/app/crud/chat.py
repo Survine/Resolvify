@@ -60,6 +60,15 @@ def create_chat_message(
     return db_message
 
 
+def get_session_messages(db: Session, session_id: int) -> List[models.ChatMessage]:
+    return (
+        db.query(models.ChatMessage)
+        .filter(models.ChatMessage.session_id == session_id)
+        .order_by(models.ChatMessage.created_at.asc())
+        .all()
+    )
+
+
 def close_chat_session(db: Session, session_id: int) -> Optional[models.ChatSession]:
     db_session = get_chat_session(db, session_id)
     if not db_session:
