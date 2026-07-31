@@ -25,6 +25,7 @@ def get_available_shops(db: Session = Depends(get_db)):
 async def create_chat_session(
     customer_email: str,
     shop_id: int,
+    initial_message: str = None,
     db: Session = Depends(get_db),
 ):
     customer = crud.get_customer_by_email(db, customer_email)
@@ -39,6 +40,16 @@ async def create_chat_session(
         raise HTTPException(status_code=404, detail="Shop not found")
 
     session = crud.create_chat_session(db, customer.id, shop_id)
+
+    if initial_message and initial_message.strip():
+        crud.create_chat_message(
+            db,
+            schemas.ChatMessageCreate(
+                session_id=session.id,
+                message=initial_message.strip(),
+                is_from_customer=True,
+            ),
+        )
 
     if customer_email in manager.customer_connections:
         manager.session_connections[session.id] = manager.customer_connections[customer_email]
@@ -89,13 +100,17 @@ async def assign_session(
     if not session:
         raise HTTPException(status_code=404, detail="Chat session not found")
 
+    agent_name = f"{current_employee.first_name} {current_employee.last_name}".strip() or current_employee.username
+    customer_email = session.customer.email if session.customer else None
+
     await manager.send_to_session(
         json.dumps({
             "type": "agent_assigned",
             "message": "A support agent has been assigned to help you.",
-            "agent_name": current_employee.username,
+            "agent_name": agent_name,
         }),
         session_id,
+        customer_email=customer_email,
     )
     return {"message": "Session assigned successfully"}
 
@@ -110,12 +125,16 @@ async def close_session(
     if not session:
         raise HTTPException(status_code=404, detail="Chat session not found")
 
+    customer_email = session.customer.email if session.customer else None
+
     await manager.send_to_session(
         json.dumps({
             "type": "session_closed",
+            "session_id": session_id,
             "message": "The support session has been ended. Thank you for contacting us!",
         }),
         session_id,
+        customer_email=customer_email,
     )
     manager.session_connections.pop(session_id, None)
 
@@ -123,7 +142,7 @@ async def close_session(
         json.dumps({
             "type": "session_closed",
             "session_id": session_id,
-            "customer_email": session.customer.email if session.customer else "Unknown",
+            "customer_email": customer_email or "Unknown",
         }),
         session.shop_id,
     )
@@ -181,30 +200,50 @@ async def ws_employee(websocket: WebSocket, employee_id: int):
                 session = crud.get_chat_session(db, msg["session_id"])
                 emp = db.query(models.Employee).filter(models.Employee.id == employee_id).first()
 
-                if session and session.customer and emp:
-                    await manager.send_to_session(
-                        json.dumps({
-                            "type": "message",
-                            "message": msg["message"],
-                            "from": "support",
-                            "timestamp": msg.get("timestamp"),
-                            "agent_name": emp.username,
-                        }),
-                        session.id,
-                    )
+                if session and emp:
+                    agent_name = f"{emp.first_name} {emp.last_name}".strip() or emp.username
+                    customer_email = session.customer.email if session.customer else None
+                    
+                    payload = json.dumps({
+                        "type": "message",
+                        "session_id": session.id,
+                        "message": msg["message"],
+                        "from": "support",
+                        "timestamp": msg.get("timestamp"),
+                        "agent_name": agent_name,
+                    })
+
+                    await manager.send_to_session(payload, session.id, customer_email=customer_email)
                 db.close()
+
+            elif msg["type"] in ("typing", "stop_typing"):
+                sid = msg.get("session_id")
+                if sid:
+                    payload = json.dumps({
+                        "type": msg["type"],
+                        "session_id": sid,
+                        "agent_name": f"{employee.first_name} {employee.last_name}".strip() or employee.username,
+                    })
+                    db = next(get_db())
+                    session = crud.get_chat_session(db, sid)
+                    customer_email = session.customer.email if (session and session.customer) else None
+                    db.close()
+                    await manager.send_to_session(payload, sid, customer_email=customer_email)
+
     except WebSocketDisconnect:
         manager.disconnect_employee(employee_id)
 
 
 @router.websocket("/ws/customer/{customer_email}")
 async def ws_customer(websocket: WebSocket, customer_email: str):
-    await manager.connect_customer(websocket, customer_email)
+    import urllib.parse
+    clean_email = urllib.parse.unquote(customer_email)
+    await manager.connect_customer(websocket, clean_email)
     current_session_id = None
 
     try:
         db = next(get_db())
-        customer = crud.get_customer_by_email(db, customer_email)
+        customer = crud.get_customer_by_email(db, clean_email)
         if customer:
             active = (
                 db.query(models.ChatSession)
@@ -235,12 +274,12 @@ async def ws_customer(websocket: WebSocket, customer_email: str):
 
             elif msg["type"] == "chat_message":
                 db = next(get_db())
-                customer = crud.get_customer_by_email(db, customer_email)
+                customer = crud.get_customer_by_email(db, clean_email)
                 if not customer:
                     customer = crud.create_customer(
                         db,
                         schemas.CustomerCreate(
-                            name=customer_email.split("@")[0], email=customer_email
+                            name=clean_email.split("@")[0], email=clean_email
                         ),
                     )
 
@@ -272,6 +311,7 @@ async def ws_customer(websocket: WebSocket, customer_email: str):
                             "message": "No active chat session found. Please start a new chat.",
                         })
                     )
+                    db.close()
                     continue
 
                 crud.create_chat_message(
@@ -284,11 +324,11 @@ async def ws_customer(websocket: WebSocket, customer_email: str):
                 )
 
                 payload = json.dumps({
-                    "type": "message" if active_session.employee_id else "unassigned_message",
+                    "type": "message",
                     "session_id": active_session.id,
                     "message": msg["message"],
                     "from": "customer",
-                    "customer_email": customer_email,
+                    "customer_email": clean_email,
                     "customer_name": customer.name,
                     "timestamp": msg.get("timestamp"),
                     "shop_id": active_session.shop_id,
@@ -296,10 +336,30 @@ async def ws_customer(websocket: WebSocket, customer_email: str):
 
                 if active_session.employee_id:
                     await manager.send_to_employee(payload, active_session.employee_id)
+                    await manager.broadcast_to_shop_employees(
+                        payload, active_session.shop_id, exclude_employee_id=active_session.employee_id
+                    )
                 else:
                     await manager.broadcast_to_shop_employees(payload, active_session.shop_id)
 
                 db.close()
 
+            elif msg["type"] in ("typing", "stop_typing"):
+                sid = msg.get("session_id")
+                if sid:
+                    payload = json.dumps({
+                        "type": msg["type"],
+                        "session_id": sid,
+                        "customer_email": clean_email,
+                    })
+                    db = next(get_db())
+                    session = crud.get_chat_session(db, sid)
+                    if session:
+                        if session.employee_id:
+                            await manager.send_to_employee(payload, session.employee_id)
+                        else:
+                            await manager.broadcast_to_shop_employees(payload, session.shop_id)
+                    db.close()
+
     except WebSocketDisconnect:
-        manager.disconnect_customer(customer_email, current_session_id)
+        manager.disconnect_customer(clean_email, current_session_id)

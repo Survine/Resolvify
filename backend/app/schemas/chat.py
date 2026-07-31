@@ -16,12 +16,22 @@ class ChatMessageUpdate(BaseModel):
     message: Optional[str] = None
 
 
+class EmployeeInfo(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    username: str
+
+    model_config = {"from_attributes": True}
+
+
 class ChatMessage(ChatMessageBase):
     id: int
     session_id: int
     employee_id: Optional[int] = None
     is_from_customer: bool
     created_at: datetime
+    employee: Optional[EmployeeInfo] = None
 
     model_config = {"from_attributes": True}
 

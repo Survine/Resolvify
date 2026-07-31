@@ -8,15 +8,29 @@ export function useWebSocket(url, { onMessage, onOpen, onClose, enabled = true }
     if (!enabled || !url) return
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const base = import.meta.env.VITE_WS_URL || `${protocol}//${window.location.host}`
-    const ws = new WebSocket(`${base}${url}`)
+    const defaultHost = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? `${window.location.hostname}:8000`
+      : window.location.host
+    
+    const base = import.meta.env.VITE_WS_URL || `${protocol}//${defaultHost}`
+    const fullUrl = `${base}${url}`
 
-    ws.onopen = () => onOpen?.()
+    const ws = new WebSocket(fullUrl)
+
+    ws.onopen = () => {
+      onOpen?.()
+    }
+    
     ws.onclose = () => {
       onClose?.()
       reconnectTimer.current = setTimeout(connect, 3000)
     }
-    ws.onerror = () => ws.close()
+
+    ws.onerror = (err) => {
+      console.warn('WebSocket error:', err)
+      ws.close()
+    }
+
     ws.onmessage = (event) => {
       try {
         onMessage?.(JSON.parse(event.data))

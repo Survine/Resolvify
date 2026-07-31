@@ -34,8 +34,20 @@ export default function Dashboard() {
   // Fetch messages for a specific session
   const fetchMessages = async (sessionId) => {
     try {
-      const res = await api.get(`/chat/sessions/${sessionId}`)
-      setMessages(res.data.messages || [])
+      const res = await api.get(`/chat/sessions/${sessionId}/messages`)
+      setMessages(
+        (res.data || []).map((m) => ({
+          id: m.id,
+          message: m.message,
+          is_from_customer: m.is_from_customer,
+          created_at: m.created_at,
+          employee: m.employee
+            ? { first_name: m.employee.first_name, last_name: m.employee.last_name }
+            : m.employee_id
+            ? { first_name: employee?.first_name || 'Support Agent', last_name: employee?.last_name || '' }
+            : null,
+        }))
+      )
     } catch (err) {
       console.error('Error fetching messages:', err)
     }
@@ -54,16 +66,26 @@ export default function Dashboard() {
         showNotification('New support session request!')
       } else if (data.type === 'message') {
         if (currentSession && data.session_id === currentSession.id) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: Date.now(),
-              message: data.message,
-              is_from_customer: data.from === 'customer',
-              created_at: data.timestamp || new Date().toISOString(),
-              employee: data.from === 'support' ? { first_name: data.agent_name, last_name: '' } : null,
-            },
-          ])
+          setMessages((prev) => {
+            const isDup = prev.some(
+              (m) =>
+                m.message === data.message &&
+                m.is_from_customer === (data.from === 'customer') &&
+                (m.id === data.id || Math.abs(new Date(m.created_at) - new Date(data.timestamp || new Date())) < 2000)
+            )
+            if (isDup) return prev
+
+            return [
+              ...prev,
+              {
+                id: data.id || Date.now(),
+                message: data.message,
+                is_from_customer: data.from === 'customer',
+                created_at: data.timestamp || new Date().toISOString(),
+                employee: data.from === 'support' ? { first_name: data.agent_name || employee?.first_name, last_name: '' } : null,
+              },
+            ]
+          })
         } else {
           fetchSessions()
         }
@@ -139,17 +161,28 @@ export default function Dashboard() {
     try {
       await api.put(`/chat/sessions/${sessionId}/assign`)
       await fetchSessions()
-      const welcome = `Hello! I'm ${employee.first_name}. How can I assist you today?`
+
+      const updatedRes = await api.get(`/chat/sessions/${sessionId}`)
+      setCurrentSession(updatedRes.data)
+
+      const welcome = `Hello! I'm ${employee?.first_name || 'Support'}. How can I assist you today?`
       send({
         type: 'chat_message',
         session_id: sessionId,
         message: welcome,
         timestamp: new Date().toISOString(),
       })
-      // Fetch session object from updated list
-      const updatedRes = await api.get(`/chat/sessions/${sessionId}`)
-      setCurrentSession(updatedRes.data)
-      setMessages(updatedRes.data.messages || [])
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          message: welcome,
+          is_from_customer: false,
+          created_at: new Date().toISOString(),
+          employee: { first_name: employee?.first_name || 'Support Agent', last_name: employee?.last_name || '' },
+        },
+      ])
     } catch (err) {
       console.error('Error assigning session:', err)
     }
