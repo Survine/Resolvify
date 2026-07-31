@@ -77,6 +77,8 @@ export default function ChatWindow({
               key={msg.id || msg.timestamp}
               message={msg}
               isSelf={!msg.is_from_customer}
+              customerName={session.customer?.name}
+              customerId={session.customer?.id}
             />
           ))
         )}

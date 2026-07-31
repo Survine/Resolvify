@@ -1,5 +1,18 @@
 services:
-  # 1. FastAPI Backend Service
+  # 1. Frontend Vite React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5174:5174"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_WS_URL=ws://localhost:8000
+    depends_on:
+      - backend
+
+  # 2. FastAPI Backend Service
   backend:
     build:
       context: ./backend
@@ -17,7 +30,7 @@ services:
       redis:
         condition: service_started
 
-  # 2. PostgreSQL Database Service
+  # 3. PostgreSQL Database Service
   postgres:
     image: postgres:16-alpine
     restart: always
@@ -35,14 +48,14 @@ services:
       timeout: 3s
       retries: 5
 
-  # 3. Redis Service for Real-time WebSockets
+  # 4. Redis Service for Real-time WebSockets
   redis:
     image: redis:7-alpine
     restart: always
     ports:
       - "6379:6379"
 
-  # 4. Adminer — Instant Web Database GUI Viewer
+  # 5. Adminer — Instant Web Database GUI Viewer
   adminer:
     image: adminer:latest
     restart: always

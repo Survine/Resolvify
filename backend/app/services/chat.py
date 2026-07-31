@@ -52,10 +52,19 @@ class ConnectionManager:
             try:
                 for message in self.pubsub.listen():
                     if message["type"] == "message":
-                        if self.main_loop and self.main_loop.is_running():
+                        loop = self.main_loop
+                        if not loop or not loop.is_running():
+                            try:
+                                loop = asyncio.get_event_loop()
+                            except Exception:
+                                pass
+                        if loop and loop.is_running():
                             asyncio.run_coroutine_threadsafe(
-                                self._handle_message(message), self.main_loop
+                                self._handle_message(message), loop
                             )
+                        else:
+                            # Fallback if no loop threadsafe, attempt local execution
+                            logger.warning("Main loop unavailable for Redis message dispatch")
             except Exception as exc:
                 logger.error("Redis listener error: %s", exc)
 

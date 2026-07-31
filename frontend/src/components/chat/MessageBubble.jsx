@@ -2,7 +2,7 @@ import { cn } from '../../utils/cn'
 import { formatTime } from '../../utils/formatters'
 import { User, Bot, Headset } from 'lucide-react'
 
-export default function MessageBubble({ message, isSelf }) {
+export default function MessageBubble({ message, isSelf, customerName, customerId }) {
   const isSystem = message.employee?.first_name === 'System' || message.isSystem
 
   if (isSystem) {
@@ -16,11 +16,14 @@ export default function MessageBubble({ message, isSelf }) {
     )
   }
 
-  const senderName = isSelf
-    ? 'You'
-    : message.employee
-    ? `${message.employee.first_name} ${message.employee.last_name}`.trim()
-    : 'Support Agent'
+  let senderName = 'Support Agent'
+  if (isSelf) {
+    senderName = 'You'
+  } else if (message.is_from_customer) {
+    senderName = customerName || message.customer_name || (customerId ? `Customer #${customerId}` : 'Customer')
+  } else {
+    senderName = 'Support Agent'
+  }
 
   return (
     <div

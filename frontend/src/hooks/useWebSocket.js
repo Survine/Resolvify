@@ -4,6 +4,16 @@ export function useWebSocket(url, { onMessage, onOpen, onClose, enabled = true }
   const wsRef = useRef(null)
   const reconnectTimer = useRef(null)
 
+  const onMessageRef = useRef(onMessage)
+  const onOpenRef = useRef(onOpen)
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onMessageRef.current = onMessage
+    onOpenRef.current = onOpen
+    onCloseRef.current = onClose
+  })
+
   const connect = useCallback(() => {
     if (!enabled || !url) return
 
@@ -18,11 +28,11 @@ export function useWebSocket(url, { onMessage, onOpen, onClose, enabled = true }
     const ws = new WebSocket(fullUrl)
 
     ws.onopen = () => {
-      onOpen?.()
+      onOpenRef.current?.()
     }
     
     ws.onclose = () => {
-      onClose?.()
+      onCloseRef.current?.()
       reconnectTimer.current = setTimeout(connect, 3000)
     }
 
@@ -33,14 +43,14 @@ export function useWebSocket(url, { onMessage, onOpen, onClose, enabled = true }
 
     ws.onmessage = (event) => {
       try {
-        onMessage?.(JSON.parse(event.data))
+        onMessageRef.current?.(JSON.parse(event.data))
       } catch {
-        onMessage?.(event.data)
+        onMessageRef.current?.(event.data)
       }
     }
 
     wsRef.current = ws
-  }, [url, enabled, onMessage, onOpen, onClose])
+  }, [url, enabled])
 
   useEffect(() => {
     connect()
