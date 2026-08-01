@@ -67,16 +67,21 @@ async def create_chat_session(
     return session
 
 
+def _get_employee_role_name(employee: models.Employee, db: Session) -> str | None:
+    if employee.role:
+        return employee.role.name
+    if employee.role_id:
+        role_obj = db.query(models.Role).filter(models.Role.id == employee.role_id).first()
+        return role_obj.name if role_obj else None
+    return None
+
+
 @router.get("/sessions/waiting", response_model=List[schemas.ChatSession])
 def get_waiting_sessions(
     db: Session = Depends(get_db),
     current_employee: models.Employee = Depends(chat_read),
 ):
-    role_name = current_employee.role.name if current_employee.role else None
-    if not role_name and current_employee.role_id:
-        role_obj = db.query(models.Role).filter(models.Role.id == current_employee.role_id).first()
-        role_name = role_obj.name if role_obj else None
-
+    role_name = _get_employee_role_name(current_employee, db)
     if role_name in ("admin", "manager") or not current_employee.shop_id:
         return crud.get_waiting_chat_sessions(db)
     return crud.get_waiting_chat_sessions_by_shop(db, current_employee.shop_id)

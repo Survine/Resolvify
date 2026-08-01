@@ -1,9 +1,9 @@
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app import models
 from app.database import get_db
 from app.services.auth import get_current_active_employee
-from app import models
 
 
 class PermissionChecker:
@@ -27,8 +27,6 @@ class PermissionChecker:
             .first()
         )
         if not has:
-            from fastapi import HTTPException, status
-
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Not enough permissions to {self.action} {self.resource}",

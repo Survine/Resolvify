@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
-from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from sqlalchemy.orm import Session, joinedload
 
+from app import models
 from app.config import settings
 from app.database import get_db
 from app.schemas.auth import TokenData
@@ -23,21 +24,13 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def authenticate_employee(db: Session, username: str, password: str):
-    from app import models
-
-
+def authenticate_employee(db: Session, username: str, password: str) -> Optional[models.Employee]:
     employee = (
         db.query(models.Employee)
         .filter(models.Employee.username == username, models.Employee.is_active == True)
         .first()
     )
-
-    if not employee:
-        return None
-    val = verify_password(password, employee.hashed_password)
-
-    if not val:
+    if not employee or not verify_password(password, employee.hashed_password):
         return None
     return employee
 
@@ -51,9 +44,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 async def get_current_employee(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
-):
-    from app import models
-
+) -> models.Employee:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -67,8 +58,6 @@ async def get_current_employee(
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-
-    from sqlalchemy.orm import joinedload
 
     employee = (
         db.query(models.Employee)
@@ -85,8 +74,8 @@ async def get_current_employee(
 
 
 async def get_current_active_employee(
-    current_employee=Depends(get_current_employee),
-):
+    current_employee: models.Employee = Depends(get_current_employee),
+) -> models.Employee:
     if not current_employee.is_active:
-        raise HTTPException(status_code=400, detail="Inactive employee")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive employee")
     return current_employee
